@@ -6,5 +6,5 @@ package com.qsmaxmin.plugin;
  * @Description
  */
 public class ViewHelperExtension {
-    public boolean enable = true;
+    public boolean enable = true
 }

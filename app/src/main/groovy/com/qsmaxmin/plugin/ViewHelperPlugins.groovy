@@ -14,10 +14,10 @@ public class ViewHelperPlugins implements Plugin<Project> {
 
     @Override
     void apply(Project target) {
-        def extension = project.extensions.create(EXTENSION_NAME, ViewHelperExtension)
+//        def extension = project.extensions.create(EXTENSION_NAME, ViewHelperExtension)
 
         project.task('QsBaseTask') << {
-            println 'QsBase is enable:' + extension.enable
+            println 'QsBase is enable:'
         }
     }
 }

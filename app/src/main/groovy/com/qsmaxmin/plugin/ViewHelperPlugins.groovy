@@ -1,14 +1,19 @@
-import com.qsmaxmin.plugin.ViewHelperExtension
+package com.qsmaxmin.plugin
+
 import org.gradle.api.Plugin
-import org.gradle.api.Project
+import org.gradle.api.Project;
 
-public class ViewHelperPlugin implements Plugin<Project> {
-
+/**
+ * @CreateBy qsmaxmin
+ * @Date 2018/12/17 13:08
+ * @Description
+ */
+public class ViewHelperPlugins implements Plugin<Project> {
     static final String GROUP = 'QsBase'
     static final String EXTENSION_NAME = 'QsBase'
 
     @Override
-    void apply(Project project) {
+    void apply(Project target) {
         def extension = project.extensions.create(EXTENSION_NAME, ViewHelperExtension)
 
         project.task('QsBaseTask') << {

@@ -7,3 +7,14 @@ dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
 }
 
+sourceSets {
+    main {
+        groovy {
+            srcDir 'src/main/groovy'
+        }
+
+        resources {
+            srcDir 'src/main/resources'
+        }
+    }
+}

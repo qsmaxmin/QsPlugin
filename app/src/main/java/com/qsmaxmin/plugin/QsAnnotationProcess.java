@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import javax.annotation.processing.AbstractProcessor;
@@ -21,6 +22,7 @@ import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.Name;
 import javax.lang.model.element.TypeElement;
@@ -36,11 +38,11 @@ public class QsAnnotationProcess extends AbstractProcessor {
 
     private class BindItem {
         private String fieldName;
-        private int    onClickId;
+        private int    viewId;
 
-        BindItem(String fieldName, int onClickId) {
+        BindItem(String fieldName, int viewId) {
             this.fieldName = fieldName;
-            this.onClickId = onClickId;
+            this.viewId = viewId;
         }
     }
 
@@ -63,7 +65,7 @@ public class QsAnnotationProcess extends AbstractProcessor {
         Set<? extends Element> bindViewElement = roundEnv.getElementsAnnotatedWith(Bind.class);
         printMessage("...@Bind element size:" + bindViewElement.size());
 
-        HashMap<String, List<String>> onClickHolder = new HashMap<>();
+        HashMap<String, Map<String, List<String>>> onClickHolder = new HashMap<>();
         Set<? extends Element> onClickElement = roundEnv.getElementsAnnotatedWith(OnClick.class);
         printMessage("...@OnClick element size:" + onClickElement.size());
 
@@ -99,6 +101,9 @@ public class QsAnnotationProcess extends AbstractProcessor {
         //------------onClick view logic-------------
         for (Element element : onClickElement) {
             if (element.getKind() != ElementKind.METHOD) continue;
+            ExecutableElement executableElement = (ExecutableElement) element;
+            String methodName = executableElement.getSimpleName().toString();
+
             OnClick onClick = element.getAnnotation(OnClick.class);
             int[] onClickIds = onClick.value();
             if (onClickIds.length == 0) continue;
@@ -113,10 +118,16 @@ public class QsAnnotationProcess extends AbstractProcessor {
             String qualifiedName = enclosingElement.getQualifiedName().toString();
             if (!qualifiedNameList.contains(qualifiedName)) qualifiedNameList.add(qualifiedName);
 
-            List<String> codeList = onClickHolder.get(qualifiedName);
+            Map<String, List<String>> stringListMap = onClickHolder.get(qualifiedName);
+            if (stringListMap == null) {
+                stringListMap = new HashMap<>();
+                onClickHolder.put(qualifiedName, stringListMap);
+            }
+
+            List<String> codeList = stringListMap.get(methodName);
             if (codeList == null) {
                 codeList = new ArrayList<>();
-                onClickHolder.put(qualifiedName, codeList);
+                stringListMap.put(methodName, codeList);
             }
 
             List<BindItem> bindItems = bindViewItemHolder.get(qualifiedName);
@@ -124,7 +135,7 @@ public class QsAnnotationProcess extends AbstractProcessor {
                 BindItem bindItem = null;
                 if (bindItems != null && !bindItems.isEmpty()) {
                     for (BindItem item : bindItems) {
-                        if (item.onClickId == onClickId) {
+                        if (item.viewId == onClickId) {
                             bindItems.remove(item);
                             bindItem = item;
                             break;
@@ -133,11 +144,11 @@ public class QsAnnotationProcess extends AbstractProcessor {
                 }
 
                 if (bindItem != null) {
-                    String code = "if(target." + bindItem.fieldName + " != null) target." + bindItem.fieldName + ".setOnClickListener(listener);\n";
+                    String code = "if(target." + bindItem.fieldName + " != null) target." + bindItem.fieldName + ".setOnClickListener(" + methodName + "Listener);\n";
                     codeList.add(code);
                 } else {
                     String code0 = "View v_" + onClickId + " = view.findViewById(" + onClickId + ");\n";
-                    String code1 = "if (v_" + onClickId + " != null) v_" + onClickId + ".setOnClickListener(listener);\n";
+                    String code1 = "if (v_" + onClickId + " != null) v_" + onClickId + ".setOnClickListener(" + methodName + "Listener);\n";
                     codeList.add(code0 + code1);
                 }
             }
@@ -181,16 +192,20 @@ public class QsAnnotationProcess extends AbstractProcessor {
                 }
             }
 
-            List<String> onClickCodeList = onClickHolder.get(qualifiedName);
-            if (onClickCodeList != null) {
-                String listenerCode = "View.OnClickListener listener = new View.OnClickListener() {\n" +
-                        "   @Override public void onClick(View v) {\n" +
-                        "       target.onViewClick(v);\n" +
-                        "   }\n" +
-                        "};\n";
-                bindViewBuilder.addCode(listenerCode);
-                for (String code : onClickCodeList) {
-                    bindViewBuilder.addCode(code);
+            Map<String, List<String>> stringListMap = onClickHolder.get(qualifiedName);
+            if (stringListMap != null) {
+                for (String methodName : stringListMap.keySet()) {
+                    String listenerCode = "View.OnClickListener " + methodName + "Listener = new View.OnClickListener() {\n" +
+                            "   @Override public void onClick(View v) {\n" +
+                            "       target." + methodName + "(v);\n" +
+                            "   }\n" +
+                            "};\n";
+                    bindViewBuilder.addCode(listenerCode);
+
+                    List<String> onClickCodeList = stringListMap.get(methodName);
+                    for (String code : onClickCodeList) {
+                        bindViewBuilder.addCode(code);
+                    }
                 }
             }
             typeSpecBuilder.addMethod(bindViewBuilder.build());

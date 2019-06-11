@@ -89,9 +89,8 @@ public class QsAnnotationProcess extends AbstractProcessor {
                 itemList = new ArrayList<>();
                 bindViewItemHolder.put(qualifiedName, itemList);
             }
-            String code = "if(target." + element.getSimpleName().toString() + " == null){\n" +
-                    "   target." + element.getSimpleName().toString() + " = view.findViewById(" + viewId + ");\n" +
-                    "}\n";
+            String code = "if(target." + element.getSimpleName().toString() + " == null)" +
+                    "target." + element.getSimpleName().toString() + " = view.findViewById(" + viewId + ");\n";
             codeList.add(code);
             BindItem bindItem = new BindItem(element.getSimpleName().toString(), viewId);
             itemList.add(bindItem);
@@ -134,7 +133,7 @@ public class QsAnnotationProcess extends AbstractProcessor {
                 }
 
                 if (bindItem != null) {
-                    String code = "target." + bindItem.fieldName + ".setOnClickListener(listener);\n";
+                    String code = "if(target." + bindItem.fieldName + " != null) target." + bindItem.fieldName + ".setOnClickListener(listener);\n";
                     codeList.add(code);
                 } else {
                     String code0 = "View v_" + onClickId + " = view.findViewById(" + onClickId + ");\n";
@@ -163,9 +162,7 @@ public class QsAnnotationProcess extends AbstractProcessor {
                 Name simpleName = element.getSimpleName();
                 String typeStr = element.asType().toString();
                 String code0 = "Object bv_" + simpleName + " = bundle.get(\"" + bundleKey + "\");\n";
-                String code1 = "if(bv_" + simpleName + " != null){\n" +
-                        "   target." + simpleName + " = (" + typeStr + ")bv_" + simpleName + ";\n " +
-                        "}\n";
+                String code1 = "if(bv_" + simpleName + " != null)target." + simpleName + " = (" + typeStr + ")bv_" + simpleName + ";\n ";
                 keyList.add(code0 + code1);
             }
         }

@@ -1,20 +1,21 @@
-apply plugin: 'groovy'
+apply plugin: 'java-library'
 apply plugin: 'maven'
 
+
 dependencies {
-    compile gradleApi()//gradle sdk
-    compile localGroovy()//groovy sdk
-    compile fileTree(dir: 'libs', include: ['*.jar'])
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation 'com.squareup:javapoet:1.11.1'
 }
 
-sourceSets {
-    main {
-        groovy {
-            srcDir 'src/main/groovy'
-        }
+sourceCompatibility = "7"
+targetCompatibility = "7"
 
-        resources {
-            srcDir 'src/main/resources'
-        }
+uploadArchives {
+    repositories.mavenDeployer {
+        def deployPath = file(getProperty('aar.deployPath'))
+        repository(url: "file://${deployPath.absolutePath}")
+        pom.groupId = "com.qsmaxmin.qsbase"
+        pom.artifactId = "QsPlugin"
+        pom.version = "9.9.9"
     }
 }

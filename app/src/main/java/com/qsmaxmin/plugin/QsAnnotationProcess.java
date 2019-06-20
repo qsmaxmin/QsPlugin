@@ -19,6 +19,7 @@ import java.util.Set;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.ProcessingEnvironment;
+import javax.annotation.processing.Processor;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
@@ -34,7 +35,7 @@ import javax.tools.Diagnostic;
  * @Date 2019/6/6 11:13
  * @Description
  */
-@AutoService(Process.class)
+@AutoService(Processor.class)
 public class QsAnnotationProcess extends AbstractProcessor {
     private static final String TAG = "QsAnnotationProcess:";
 

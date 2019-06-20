@@ -1,5 +1,6 @@
 package com.qsmaxmin.plugin;
 
+import com.google.auto.service.AutoService;
 import com.qsmaxmin.qsbase.common.viewbind.annotation.Bind;
 import com.qsmaxmin.qsbase.common.viewbind.annotation.BindBundle;
 import com.qsmaxmin.qsbase.common.viewbind.annotation.OnClick;
@@ -33,6 +34,7 @@ import javax.tools.Diagnostic;
  * @Date 2019/6/6 11:13
  * @Description
  */
+@AutoService(Process.class)
 public class QsAnnotationProcess extends AbstractProcessor {
     private static final String TAG = "QsAnnotationProcess:";
 

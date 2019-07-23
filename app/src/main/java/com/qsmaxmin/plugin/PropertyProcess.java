@@ -41,7 +41,7 @@ class PropertyProcess {
             ClassName superClassName = ClassName.bestGuess("com.qsmaxmin.qsbase.common.config.PropertiesExecutor");
             List<String> qualifiedNameList = new ArrayList<>();
             HashMap<String, HashMap<String, List<String>>> propertyCodeHolder = new HashMap<>();
-
+            boolean hasGson = false;
             for (Element element : propertyElement) {
                 if (element.getKind() != ElementKind.FIELD) continue;
                 TypeElement enclosingElement = (TypeElement) element.getEnclosingElement();
@@ -83,6 +83,7 @@ class PropertyProcess {
                         bindConfigCodeList.add("if (" + elementName + " instanceof " + instanceType + ") config." + elementName + " = (" + elementType + ") " + elementName + ";\n\n");
                     }
                 } else {
+                    hasGson = true;
                     int index = elementType.indexOf('<');
                     String elementTypeNoGenericParadigm = index > 0 ? elementType.substring(0, index) : elementType;
                     bindConfigCodeList.add("if (" + elementName + " instanceof java.lang.String) {\n");
@@ -117,6 +118,7 @@ class PropertyProcess {
                         }
                     }
                 } else {
+                    hasGson = true;
                     commitCodeList.add("if (config." + elementName + " != null) {\n");
                     commitCodeList.add("    if (gson == null) gson = new com.google.gson.Gson();\n");
                     commitCodeList.add("    edit.putString(\"" + elementName + "\", gson.toJson(config." + elementName + "));\n ");
@@ -128,11 +130,13 @@ class PropertyProcess {
             //create class logic
             for (String qualifiedName : qualifiedNameList) {
                 ClassName className = ClassName.bestGuess(qualifiedName);
+                HashMap<String, List<String>> stringListHashMap = propertyCodeHolder.get(qualifiedName);
 
                 TypeSpec.Builder typeSpecBuilder = generateClass(className, superClassName);
-                typeSpecBuilder.addField(ClassName.bestGuess("com.google.gson.Gson"), "gson");
+                if (hasGson) {
+                    typeSpecBuilder.addField(ClassName.bestGuess("com.google.gson.Gson"), "gson");
+                }
 
-                HashMap<String, List<String>> stringListHashMap = propertyCodeHolder.get(qualifiedName);
                 //create bindConfig method
                 MethodSpec.Builder bindConfigMethod = createBindConfigMethod(className);
                 bindConfigMethod.addCode("java.util.Map<String, ?> spAll = sp.getAll();\n");

@@ -35,14 +35,13 @@ class PropertyProcess {
     }
 
     void process(RoundEnvironment roundEnv) {
-        ClassName superClassName = ClassName.bestGuess("com.qsmaxmin.qsbase.common.config.PropertiesExecutor");
-        List<String> qualifiedNameList = new ArrayList<>();
-        HashMap<String, HashMap<String, List<String>>> propertyCodeHolder = new HashMap<>();
-
-
         Set<? extends Element> propertyElement = roundEnv.getElementsAnnotatedWith(Property.class);
-        if (propertyElement != null) {
+        if (propertyElement != null && !propertyElement.isEmpty()) {
             mProcess.printMessage("...@BindBundle element size:" + propertyElement.size());
+            ClassName superClassName = ClassName.bestGuess("com.qsmaxmin.qsbase.common.config.PropertiesExecutor");
+            List<String> qualifiedNameList = new ArrayList<>();
+            HashMap<String, HashMap<String, List<String>>> propertyCodeHolder = new HashMap<>();
+
             for (Element element : propertyElement) {
                 if (element.getKind() != ElementKind.FIELD) continue;
                 TypeElement enclosingElement = (TypeElement) element.getEnclosingElement();
@@ -124,52 +123,53 @@ class PropertyProcess {
                     commitCodeList.add("} else {\n    edit.remove(\"" + elementName + "\");\n}\n");
                 }
             }
-        }
 
-        //create class logic
-        for (String qualifiedName : qualifiedNameList) {
-            ClassName className = ClassName.bestGuess(qualifiedName);
 
-            TypeSpec.Builder typeSpecBuilder = generateClass(className, superClassName);
-            typeSpecBuilder.addField(ClassName.bestGuess("com.google.gson.Gson"), "gson");
+            //create class logic
+            for (String qualifiedName : qualifiedNameList) {
+                ClassName className = ClassName.bestGuess(qualifiedName);
 
-            HashMap<String, List<String>> stringListHashMap = propertyCodeHolder.get(qualifiedName);
-            //create bindConfig method
-            MethodSpec.Builder bindConfigMethod = createBindConfigMethod(className);
-            bindConfigMethod.addCode("java.util.Map<String, ?> spAll = sp.getAll();\n");
-            bindConfigMethod.addCode("if (spAll == null || spAll.isEmpty()) return;\n");
-            List<String> bindConfigCodeList = stringListHashMap.get(bindConfigMethodName);
-            if (bindConfigCodeList != null) {
-                for (String code : bindConfigCodeList) {
-                    bindConfigMethod.addCode(code);
+                TypeSpec.Builder typeSpecBuilder = generateClass(className, superClassName);
+                typeSpecBuilder.addField(ClassName.bestGuess("com.google.gson.Gson"), "gson");
+
+                HashMap<String, List<String>> stringListHashMap = propertyCodeHolder.get(qualifiedName);
+                //create bindConfig method
+                MethodSpec.Builder bindConfigMethod = createBindConfigMethod(className);
+                bindConfigMethod.addCode("java.util.Map<String, ?> spAll = sp.getAll();\n");
+                bindConfigMethod.addCode("if (spAll == null || spAll.isEmpty()) return;\n");
+                List<String> bindConfigCodeList = stringListHashMap.get(bindConfigMethodName);
+                if (bindConfigCodeList != null) {
+                    for (String code : bindConfigCodeList) {
+                        bindConfigMethod.addCode(code);
+                    }
                 }
-            }
-            typeSpecBuilder.addMethod(bindConfigMethod.build());
+                typeSpecBuilder.addMethod(bindConfigMethod.build());
 
-            //create commit method
-            MethodSpec.Builder commitMethod = createCommitMethod(className);
-            commitMethod.addCode("SharedPreferences.Editor edit = sp.edit();\n");
-            List<String> commitCodeList = stringListHashMap.get(commitMethodName);
-            if (commitCodeList != null) {
-                for (String code : commitCodeList) {
-                    commitMethod.addCode(code);
+                //create commit method
+                MethodSpec.Builder commitMethod = createCommitMethod(className);
+                commitMethod.addCode("SharedPreferences.Editor edit = sp.edit();\n");
+                List<String> commitCodeList = stringListHashMap.get(commitMethodName);
+                if (commitCodeList != null) {
+                    for (String code : commitCodeList) {
+                        commitMethod.addCode(code);
+                    }
                 }
-            }
-            commitMethod.addCode("edit.apply();\n");
-            typeSpecBuilder.addMethod(commitMethod.build());
+                commitMethod.addCode("edit.apply();\n");
+                typeSpecBuilder.addMethod(commitMethod.build());
 
-            //create clear method
-            MethodSpec.Builder clearMethod = createClearMethod(className);
-            clearMethod.addCode("SharedPreferences.Editor edit = sp.edit();\n");
-            clearMethod.addCode("edit.clear();\n");
-            clearMethod.addCode("edit.apply();\n");
-            typeSpecBuilder.addMethod(clearMethod.build());
+                //create clear method
+                MethodSpec.Builder clearMethod = createClearMethod(className);
+                clearMethod.addCode("SharedPreferences.Editor edit = sp.edit();\n");
+                clearMethod.addCode("edit.clear();\n");
+                clearMethod.addCode("edit.apply();\n");
+                typeSpecBuilder.addMethod(clearMethod.build());
 
-            try {
-                JavaFile javaFile = JavaFile.builder(className.packageName(), typeSpecBuilder.build()).build();
-                javaFile.writeTo(mProcess.getProcessingEnv().getFiler());
-            } catch (Exception e) {
-                e.printStackTrace();
+                try {
+                    JavaFile javaFile = JavaFile.builder(className.packageName(), typeSpecBuilder.build()).build();
+                    javaFile.writeTo(mProcess.getProcessingEnv().getFiler());
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
         }
     }

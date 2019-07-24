@@ -37,11 +37,14 @@ class PropertyProcess {
     void process(RoundEnvironment roundEnv) {
         Set<? extends Element> propertyElement = roundEnv.getElementsAnnotatedWith(Property.class);
         if (propertyElement != null && !propertyElement.isEmpty()) {
+
             mProcess.printMessage("...@BindBundle element size:" + propertyElement.size());
             ClassName superClassName = ClassName.bestGuess("com.qsmaxmin.qsbase.common.config.PropertiesExecutor");
+
             List<String> qualifiedNameList = new ArrayList<>();
+            HashMap<String, Boolean> stringBooleanHashMap = new HashMap<>();
             HashMap<String, HashMap<String, List<String>>> propertyCodeHolder = new HashMap<>();
-            boolean hasGson = false;
+
             for (Element element : propertyElement) {
                 if (element.getKind() != ElementKind.FIELD) continue;
                 TypeElement enclosingElement = (TypeElement) element.getEnclosingElement();
@@ -83,7 +86,7 @@ class PropertyProcess {
                         bindConfigCodeList.add("if (" + elementName + " instanceof " + instanceType + ") config." + elementName + " = (" + elementType + ") " + elementName + ";\n\n");
                     }
                 } else {
-                    hasGson = true;
+                    stringBooleanHashMap.put(qualifiedName, true);
                     int index = elementType.indexOf('<');
                     String elementTypeNoGenericParadigm = index > 0 ? elementType.substring(0, index) : elementType;
                     bindConfigCodeList.add("if (" + elementName + " instanceof java.lang.String) {\n");
@@ -118,7 +121,7 @@ class PropertyProcess {
                         }
                     }
                 } else {
-                    hasGson = true;
+                    stringBooleanHashMap.put(qualifiedName, true);
                     commitCodeList.add("if (config." + elementName + " != null) {\n");
                     commitCodeList.add("    if (gson == null) gson = new com.google.gson.Gson();\n");
                     commitCodeList.add("    edit.putString(\"" + elementName + "\", gson.toJson(config." + elementName + "));\n ");
@@ -133,10 +136,10 @@ class PropertyProcess {
                 HashMap<String, List<String>> stringListHashMap = propertyCodeHolder.get(qualifiedName);
 
                 TypeSpec.Builder typeSpecBuilder = generateClass(className, superClassName);
-                if (hasGson) {
+                Boolean hasGson = stringBooleanHashMap.get(qualifiedName);
+                if (hasGson != null && hasGson) {
                     typeSpecBuilder.addField(ClassName.bestGuess("com.google.gson.Gson"), "gson");
                 }
-
                 //create bindConfig method
                 MethodSpec.Builder bindConfigMethod = createBindConfigMethod(className);
                 bindConfigMethod.addCode("java.util.Map<String, ?> spAll = sp.getAll();\n");

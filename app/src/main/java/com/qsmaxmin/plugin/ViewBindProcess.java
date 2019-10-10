@@ -174,15 +174,6 @@ class ViewBindProcess {
                     String code0 = "Object bv_" + simpleName + " = bundle.get(\"" + bundleKey + "\");\n";
                     String code1 = "if(bv_" + simpleName + " != null)target." + simpleName + " = (" + typeStr + ")bv_" + simpleName + ";\n";
                     keyList.add(code0 + code1);
-
-                    //unbind
-                    List<String> unbindCodeList = unbindCodeHolder.get(qualifiedName);
-                    if (unbindCodeList == null) {
-                        unbindCodeList = new ArrayList<>();
-                        unbindCodeHolder.put(qualifiedName, unbindCodeList);
-                    }
-                    String unbindCode = "target." + element.getSimpleName().toString() + " = null;\n";
-                    unbindCodeList.add(unbindCode);
                 }
             }
         }

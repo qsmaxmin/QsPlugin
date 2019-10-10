@@ -40,9 +40,10 @@ class ViewBindProcess {
         ClassName superClassName = ClassName.bestGuess("com.qsmaxmin.qsbase.common.viewbind.AnnotationExecutor");
         List<String> qualifiedNameList = new ArrayList<>();
 
-
         HashMap<String, List<String>> bindViewCodeHolder = new HashMap<>();
         HashMap<String, List<BindItem>> bindViewItemHolder = new HashMap<>();
+        HashMap<String, List<String>> unbindCodeHolder = new HashMap<>();
+
         Set<? extends Element> bindViewElement = roundEnv.getElementsAnnotatedWith(Bind.class);
         if (bindViewElement != null) mProcess.printMessage("...@Bind element size:" + bindViewElement.size());
 
@@ -58,6 +59,7 @@ class ViewBindProcess {
         //------------bind view logic-------------
         if (bindViewElement != null) {
             for (Element element : bindViewElement) {
+                //bind
                 if (element.getKind() != ElementKind.FIELD) continue;
                 TypeElement enclosingElement = (TypeElement) element.getEnclosingElement();
                 String qualifiedName = enclosingElement.getQualifiedName().toString();
@@ -78,6 +80,16 @@ class ViewBindProcess {
                 codeList.add(code);
                 BindItem bindItem = new BindItem(element.getSimpleName().toString(), viewId);
                 itemList.add(bindItem);
+
+
+                //unbind
+                String unbindCode = "target." + element.getSimpleName().toString() + " = null;\n";
+                List<String> unbindCodeList = unbindCodeHolder.get(qualifiedName);
+                if (unbindCodeList == null) {
+                    unbindCodeList = new ArrayList<>();
+                    unbindCodeHolder.put(qualifiedName, unbindCodeList);
+                }
+                unbindCodeList.add(unbindCode);
             }
         }
 
@@ -144,6 +156,7 @@ class ViewBindProcess {
         if (bindBundleElement != null) {
             for (Element element : bindBundleElement) {
                 if (element.getKind() == ElementKind.FIELD) {
+                    //bind
                     TypeElement enclosingElement = (TypeElement) element.getEnclosingElement();
                     String qualifiedName = enclosingElement.getQualifiedName().toString();
                     if (!qualifiedNameList.contains(qualifiedName)) qualifiedNameList.add(qualifiedName);
@@ -159,8 +172,17 @@ class ViewBindProcess {
                     Name simpleName = element.getSimpleName();
                     String typeStr = element.asType().toString();
                     String code0 = "Object bv_" + simpleName + " = bundle.get(\"" + bundleKey + "\");\n";
-                    String code1 = "if(bv_" + simpleName + " != null)target." + simpleName + " = (" + typeStr + ")bv_" + simpleName + ";\n ";
+                    String code1 = "if(bv_" + simpleName + " != null)target." + simpleName + " = (" + typeStr + ")bv_" + simpleName + ";\n";
                     keyList.add(code0 + code1);
+
+                    //unbind
+                    List<String> unbindCodeList = unbindCodeHolder.get(qualifiedName);
+                    if (unbindCodeList == null) {
+                        unbindCodeList = new ArrayList<>();
+                        unbindCodeHolder.put(qualifiedName, unbindCodeList);
+                    }
+                    String unbindCode = "target." + element.getSimpleName().toString() + " = null;\n";
+                    unbindCodeList.add(unbindCode);
                 }
             }
         }
@@ -205,6 +227,16 @@ class ViewBindProcess {
                 }
             }
             typeSpecBuilder.addMethod(bindBundleBuilder.build());
+
+
+            MethodSpec.Builder unbindMethodBuilder = createUnbindMethod(className);
+            List<String> unbindCodeList = unbindCodeHolder.get(qualifiedName);
+            if (unbindCodeList != null) {
+                for (String code : unbindCodeList) {
+                    unbindMethodBuilder.addCode(code);
+                }
+            }
+            typeSpecBuilder.addMethod(unbindMethodBuilder.build());
 
             try {
                 JavaFile javaFile = JavaFile.builder(className.packageName(), typeSpecBuilder.build()).build();
@@ -261,6 +293,16 @@ class ViewBindProcess {
                 .returns(void.class)
                 .addParameter(target, "target")
                 .addParameter(ClassName.bestGuess("android.os.Bundle"), "bundle");
+        return builder;
+    }
+
+
+    private MethodSpec.Builder createUnbindMethod(TypeName target) {
+        MethodSpec.Builder builder = MethodSpec.methodBuilder("unbind");
+        builder.addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                .addAnnotation(Override.class)
+                .returns(void.class)
+                .addParameter(target, "target");
         return builder;
     }
 

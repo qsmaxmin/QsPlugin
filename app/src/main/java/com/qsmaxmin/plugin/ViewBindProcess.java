@@ -40,17 +40,17 @@ class ViewBindProcess {
         ClassName superClassName = ClassName.bestGuess("com.qsmaxmin.qsbase.common.viewbind.AnnotationExecutor");
         List<String> qualifiedNameList = new ArrayList<>();
 
-        HashMap<String, List<String>> bindViewCodeHolder = new HashMap<>();
-        HashMap<String, HashMap<Integer, String>> bindViewItemHolder = new HashMap<>();
+        HashMap<String, List<String>> findIdCodeHolder = new HashMap<>();
+        HashMap<String, List<String>> setFieldCodeHolder = new HashMap<>();
 
         Set<? extends Element> bindViewElement = roundEnv.getElementsAnnotatedWith(Bind.class);
         if (bindViewElement != null) mProcess.printMessage("...@Bind element size:" + bindViewElement.size());
 
-        HashMap<String, Map<String, List<String>>> onClickHolder = new HashMap<>();
+        HashMap<String, Map<String, List<String>>> setListenerCodeHolder = new HashMap<>();
         Set<? extends Element> onClickElement = roundEnv.getElementsAnnotatedWith(OnClick.class);
         if (onClickElement != null) mProcess.printMessage("...@OnClick element size:" + onClickElement.size());
 
-        HashMap<String, List<String>> bindBundleHolder = new HashMap<>();
+        HashMap<String, List<String>> bindBundleCodeHolder = new HashMap<>();
         Set<? extends Element> bindBundleElement = roundEnv.getElementsAnnotatedWith(BindBundle.class);
         if (bindBundleElement != null) mProcess.printMessage("...@BindBundle element size:" + bindBundleElement.size());
 
@@ -66,19 +66,22 @@ class ViewBindProcess {
 
                 Bind bind = element.getAnnotation(Bind.class);
                 int viewId = bind.value();
-                List<String> codeList = bindViewCodeHolder.get(qualifiedName);
-                HashMap<Integer, String> idNameMap = bindViewItemHolder.get(qualifiedName);
-                if (codeList == null) {
-                    codeList = new ArrayList<>();
-                    bindViewCodeHolder.put(qualifiedName, codeList);
-                    idNameMap = new HashMap<>();
-                    bindViewItemHolder.put(qualifiedName, idNameMap);
+
+                List<String> findIdCodeList = findIdCodeHolder.get(qualifiedName);
+                if (findIdCodeList == null) {
+                    findIdCodeList = new ArrayList<>();
+                    findIdCodeHolder.put(qualifiedName, findIdCodeList);
                 }
-                String code0 = "View v_" + viewId + " = view.findViewById(" + viewId + ");\n";
-                String code1 = "if (v_" + viewId + " != null) target." + element.getSimpleName().toString() + " = forceCast(v_" + viewId + ");\n";
-                codeList.add(code0);
-                codeList.add(code1);
-                idNameMap.put(viewId, element.getSimpleName().toString());
+                List<String> setFieldCodeList = setFieldCodeHolder.get(qualifiedName);
+                if (setFieldCodeList == null) {
+                    setFieldCodeList = new ArrayList<>();
+                    setFieldCodeHolder.put(qualifiedName, setFieldCodeList);
+                }
+
+                String findIdCode = "View v_" + viewId + " = view.findViewById(" + viewId + ");\n";
+                String setFieldCode = "if (v_" + viewId + " != null) target." + element.getSimpleName().toString() + " = forceCast(v_" + viewId + ");\n";
+                if (!findIdCodeList.contains(findIdCode)) findIdCodeList.add(findIdCode);
+                setFieldCodeList.add(setFieldCode);
             }
         }
 
@@ -104,32 +107,29 @@ class ViewBindProcess {
                 String qualifiedName = enclosingElement.getQualifiedName().toString();
                 if (!qualifiedNameList.contains(qualifiedName)) qualifiedNameList.add(qualifiedName);
 
-                Map<String, List<String>> stringListMap = onClickHolder.get(qualifiedName);
+                Map<String, List<String>> stringListMap = setListenerCodeHolder.get(qualifiedName);
                 if (stringListMap == null) {
                     stringListMap = new HashMap<>();
-                    onClickHolder.put(qualifiedName, stringListMap);
+                    setListenerCodeHolder.put(qualifiedName, stringListMap);
                 }
 
-                List<String> codeList = stringListMap.get(methodName);
-                if (codeList == null) {
-                    codeList = new ArrayList<>();
-                    stringListMap.put(methodName, codeList);
+                List<String> setListenerCodeList = stringListMap.get(methodName);
+                if (setListenerCodeList == null) {
+                    setListenerCodeList = new ArrayList<>();
+                    stringListMap.put(methodName, setListenerCodeList);
                 }
 
-                HashMap<Integer, String> idNameMap = bindViewItemHolder.get(qualifiedName);
                 for (int onClickId : tempList) {
-                    String fieldName = null;
-                    if (idNameMap != null && !idNameMap.isEmpty()) {
-                        fieldName = idNameMap.get(onClickId);
+                    List<String> findIdCodeList = findIdCodeHolder.get(qualifiedName);
+                    if (findIdCodeList == null) {
+                        findIdCodeList = new ArrayList<>();
+                        findIdCodeHolder.put(qualifiedName, findIdCodeList);
                     }
-                    if (fieldName != null) {
-                        String code = "if(target." + fieldName + " != null) target." + fieldName + ".setOnClickListener(" + methodName + "Listener);\n";
-                        codeList.add(code);
-                    } else {
-                        String code0 = "View v_" + onClickId + " = view.findViewById(" + onClickId + ");\n";
-                        String code1 = "if (v_" + onClickId + " != null) v_" + onClickId + ".setOnClickListener(" + methodName + "Listener);\n";
-                        codeList.add(code0 + code1);
-                    }
+                    String findIdCode = "View v_" + onClickId + " = view.findViewById(" + onClickId + ");\n";
+                    if (!findIdCodeList.contains(findIdCode)) findIdCodeList.add(findIdCode);
+
+                    String setListenerCode = "if (v_" + onClickId + " != null) v_" + onClickId + ".setOnClickListener(" + methodName + "Listener);\n";
+                    setListenerCodeList.add(setListenerCode);
                 }
             }
         }
@@ -144,10 +144,10 @@ class ViewBindProcess {
                     if (!qualifiedNameList.contains(qualifiedName)) qualifiedNameList.add(qualifiedName);
 
                     BindBundle bind = element.getAnnotation(BindBundle.class);
-                    List<String> keyList = bindBundleHolder.get(qualifiedName);
+                    List<String> keyList = bindBundleCodeHolder.get(qualifiedName);
                     if (keyList == null) {
                         keyList = new ArrayList<>();
-                        bindBundleHolder.put(qualifiedName, keyList);
+                        bindBundleCodeHolder.put(qualifiedName, keyList);
                     }
 
                     String bundleKey = bind.value();
@@ -163,43 +163,53 @@ class ViewBindProcess {
         //--------------- create class file logic------------------
         for (String qualifiedName : qualifiedNameList) {
             ClassName className = ClassName.bestGuess(qualifiedName);
-
             TypeSpec.Builder typeSpecBuilder = generateClass(className, superClassName);
 
-            MethodSpec.Builder bindViewBuilder = createBindViewMethod(className);
-            List<String> bindViewCodeList = bindViewCodeHolder.get(qualifiedName);
-            if (bindViewCodeList != null) {
-                for (String code : bindViewCodeList) {
+            List<String> findIdCodeList = findIdCodeHolder.get(qualifiedName);
+            if (findIdCodeList != null && !findIdCodeList.isEmpty()) {
+                MethodSpec.Builder bindViewBuilder = createBindViewMethod(className);
+                bindViewBuilder.addCode("//find views id base on @Bind and @OnClick annotation\n");
+                for (String code : findIdCodeList) {
                     bindViewBuilder.addCode(code);
                 }
-            }
 
-            Map<String, List<String>> stringListMap = onClickHolder.get(qualifiedName);
-            if (stringListMap != null) {
-                for (String methodName : stringListMap.keySet()) {
-                    String listenerCode = "\n\n\nView.OnClickListener " + methodName + "Listener = new View.OnClickListener() {\n" +
-                            "   @Override public void onClick(View v) {\n" +
-                            "       target." + methodName + "(v);\n" +
-                            "   }\n" +
-                            "};\n";
-                    bindViewBuilder.addCode(listenerCode);
-
-                    List<String> onClickCodeList = stringListMap.get(methodName);
-                    for (String code : onClickCodeList) {
+                List<String> setFieldCodeList = setFieldCodeHolder.get(qualifiedName);
+                if (setFieldCodeList != null && !setFieldCodeList.isEmpty()) {
+                    bindViewBuilder.addCode("\n\n//set field base on @Bind annotation\n");
+                    for (String code : setFieldCodeList) {
                         bindViewBuilder.addCode(code);
                     }
                 }
-            }
-            typeSpecBuilder.addMethod(bindViewBuilder.build());
 
-            MethodSpec.Builder bindBundleBuilder = createBindBundleMethod(className);
-            List<String> bindBundleCodeList = bindBundleHolder.get(qualifiedName);
-            if (bindBundleCodeList != null) {
+                Map<String, List<String>> stringListMap = setListenerCodeHolder.get(qualifiedName);
+                if (stringListMap != null && !stringListMap.isEmpty()) {
+                    for (String methodName : stringListMap.keySet()) {
+                        bindViewBuilder.addCode("\n\n//set click listener base on @OnClick annotation, method name:" + methodName + "\n");
+                        String listenerCode = "View.OnClickListener " + methodName + "Listener = new View.OnClickListener() {\n" +
+                                "   @Override public void onClick(View v) {\n" +
+                                "       target." + methodName + "(v);\n" +
+                                "   }\n" +
+                                "};\n";
+                        bindViewBuilder.addCode(listenerCode);
+                        List<String> onClickCodeList = stringListMap.get(methodName);
+                        for (String code : onClickCodeList) {
+                            bindViewBuilder.addCode(code);
+                        }
+                    }
+                }
+                typeSpecBuilder.addMethod(bindViewBuilder.build());
+            }
+
+
+            List<String> bindBundleCodeList = bindBundleCodeHolder.get(qualifiedName);
+            if (bindBundleCodeList != null && !bindBundleCodeList.isEmpty()) {
+                MethodSpec.Builder bindBundleBuilder = createBindBundleMethod(className);
+                bindBundleBuilder.addCode("//set field base on @BindBundle annotation\n");
                 for (String code : bindBundleCodeList) {
                     bindBundleBuilder.addCode(code);
                 }
+                typeSpecBuilder.addMethod(bindBundleBuilder.build());
             }
-            typeSpecBuilder.addMethod(bindBundleBuilder.build());
 
             try {
                 JavaFile javaFile = JavaFile.builder(className.packageName(), typeSpecBuilder.build()).build();

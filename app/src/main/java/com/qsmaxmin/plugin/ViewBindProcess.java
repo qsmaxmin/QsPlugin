@@ -59,7 +59,6 @@ class ViewBindProcess {
         //------------bind view logic-------------
         if (bindViewElement != null) {
             for (Element element : bindViewElement) {
-                //bind
                 if (element.getKind() != ElementKind.FIELD) continue;
                 TypeElement enclosingElement = (TypeElement) element.getEnclosingElement();
                 String qualifiedName = enclosingElement.getQualifiedName().toString();
@@ -139,7 +138,6 @@ class ViewBindProcess {
         if (bindBundleElement != null) {
             for (Element element : bindBundleElement) {
                 if (element.getKind() == ElementKind.FIELD) {
-                    //bind
                     TypeElement enclosingElement = (TypeElement) element.getEnclosingElement();
                     String qualifiedName = enclosingElement.getQualifiedName().toString();
                     if (!qualifiedNameList.contains(qualifiedName)) qualifiedNameList.add(qualifiedName);

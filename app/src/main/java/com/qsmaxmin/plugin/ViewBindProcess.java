@@ -42,7 +42,6 @@ class ViewBindProcess {
 
         HashMap<String, List<String>> bindViewCodeHolder = new HashMap<>();
         HashMap<String, List<BindItem>> bindViewItemHolder = new HashMap<>();
-        HashMap<String, List<String>> unbindCodeHolder = new HashMap<>();
 
         Set<? extends Element> bindViewElement = roundEnv.getElementsAnnotatedWith(Bind.class);
         if (bindViewElement != null) mProcess.printMessage("...@Bind element size:" + bindViewElement.size());
@@ -75,21 +74,11 @@ class ViewBindProcess {
                     itemList = new ArrayList<>();
                     bindViewItemHolder.put(qualifiedName, itemList);
                 }
-                String code = "if(target." + element.getSimpleName().toString() + " == null)" +
+                String code = "if(forceBind || target." + element.getSimpleName().toString() + " == null)" +
                         "target." + element.getSimpleName().toString() + " = view.findViewById(" + viewId + ");\n";
                 codeList.add(code);
                 BindItem bindItem = new BindItem(element.getSimpleName().toString(), viewId);
                 itemList.add(bindItem);
-
-
-                //unbind
-                String unbindCode = "target." + element.getSimpleName().toString() + " = null;\n";
-                List<String> unbindCodeList = unbindCodeHolder.get(qualifiedName);
-                if (unbindCodeList == null) {
-                    unbindCodeList = new ArrayList<>();
-                    unbindCodeHolder.put(qualifiedName, unbindCodeList);
-                }
-                unbindCodeList.add(unbindCode);
             }
         }
 
@@ -219,16 +208,6 @@ class ViewBindProcess {
             }
             typeSpecBuilder.addMethod(bindBundleBuilder.build());
 
-
-            MethodSpec.Builder unbindMethodBuilder = createUnbindMethod(className);
-            List<String> unbindCodeList = unbindCodeHolder.get(qualifiedName);
-            if (unbindCodeList != null) {
-                for (String code : unbindCodeList) {
-                    unbindMethodBuilder.addCode(code);
-                }
-            }
-            typeSpecBuilder.addMethod(unbindMethodBuilder.build());
-
             try {
                 JavaFile javaFile = JavaFile.builder(className.packageName(), typeSpecBuilder.build()).build();
                 javaFile.writeTo(mProcess.getProcessingEnv().getFiler());
@@ -272,7 +251,8 @@ class ViewBindProcess {
                 .addAnnotation(Override.class)
                 .returns(void.class)
                 .addParameter(target, "target", Modifier.FINAL)
-                .addParameter(ClassName.bestGuess("android.view.View"), "view");
+                .addParameter(ClassName.bestGuess("android.view.View"), "view")
+                .addParameter(boolean.class, "forceBind");
         return builder;
     }
 
@@ -284,16 +264,6 @@ class ViewBindProcess {
                 .returns(void.class)
                 .addParameter(target, "target")
                 .addParameter(ClassName.bestGuess("android.os.Bundle"), "bundle");
-        return builder;
-    }
-
-
-    private MethodSpec.Builder createUnbindMethod(TypeName target) {
-        MethodSpec.Builder builder = MethodSpec.methodBuilder("unbind");
-        builder.addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                .addAnnotation(Override.class)
-                .returns(void.class)
-                .addParameter(target, "target");
         return builder;
     }
 

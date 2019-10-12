@@ -38,7 +38,7 @@ class PropertyProcess {
         Set<? extends Element> propertyElement = roundEnv.getElementsAnnotatedWith(Property.class);
         if (propertyElement != null && !propertyElement.isEmpty()) {
 
-            mProcess.printMessage("...@BindBundle element size:" + propertyElement.size());
+            mProcess.printMessage("...@Property element size:" + propertyElement.size());
             ClassName superClassName = ClassName.bestGuess("com.qsmaxmin.qsbase.common.config.PropertiesExecutor");
 
             List<String> qualifiedNameList = new ArrayList<>();

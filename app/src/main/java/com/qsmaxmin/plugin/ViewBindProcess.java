@@ -38,8 +38,8 @@ class ViewBindProcess {
     }
 
     void process(RoundEnvironment roundEnv) {
-        ClassName superClassName = ClassName.bestGuess("com.qsmaxmin.qsbase.common.viewbind.AnnotationExecutor");
         List<String> qualifiedNameList = new ArrayList<>();
+        List<QualifiedItem> qualifiedItemList = new ArrayList<>();
 
         HashMap<String, List<String>> findIdCodeHolder = new HashMap<>();
         HashMap<String, List<String>> setFieldCodeHolder = new HashMap<>();
@@ -158,25 +158,30 @@ class ViewBindProcess {
             }
         }
 
+        for (String qualifiedName : qualifiedNameList) {
+            qualifiedItemList.add(new QualifiedItem(qualifiedName));
+        }
+        //-----------------------create executor finder class-----------------------
+        generateExecutorFinderClass(qualifiedItemList);
+
         //--------------- create class file logic------------------
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         String timeStr = dateFormat.format(System.currentTimeMillis());
         String docStr = "该类由QsPlugin插件自动生成 " + timeStr +
                 "\nQsPlugin插件需要配合QsBase框架一起使用，使用时请确保该插件版本和QsBase框架版本号一致，否则可能会出现不可预期的错误！\n";
 
-        for (String qualifiedName : qualifiedNameList) {
-            ClassName className = ClassName.bestGuess(qualifiedName);
-            TypeSpec.Builder typeSpecBuilder = generateClass(className, superClassName, docStr);
+        for (QualifiedItem item : qualifiedItemList) {
+            TypeSpec.Builder typeSpecBuilder = generateViewAnnotationClass(item, docStr);
 
-            List<String> findIdCodeList = findIdCodeHolder.get(qualifiedName);
+            List<String> findIdCodeList = findIdCodeHolder.get(item.getQualifiedName());
             if (findIdCodeList != null && !findIdCodeList.isEmpty()) {
-                MethodSpec.Builder bindViewBuilder = createBindViewMethod(className);
+                MethodSpec.Builder bindViewBuilder = createBindViewMethod(item.getClassName());
                 bindViewBuilder.addCode("//find views id base on @Bind and @OnClick annotation\n");
                 for (String code : findIdCodeList) {
                     bindViewBuilder.addCode(code);
                 }
 
-                List<String> setFieldCodeList = setFieldCodeHolder.get(qualifiedName);
+                List<String> setFieldCodeList = setFieldCodeHolder.get(item.getQualifiedName());
                 if (setFieldCodeList != null && !setFieldCodeList.isEmpty()) {
                     bindViewBuilder.addCode("\n//set field base on @Bind annotation\n");
                     for (String code : setFieldCodeList) {
@@ -184,7 +189,7 @@ class ViewBindProcess {
                     }
                 }
 
-                Map<String, List<String>> stringListMap = setListenerCodeHolder.get(qualifiedName);
+                Map<String, List<String>> stringListMap = setListenerCodeHolder.get(item.getQualifiedName());
                 if (stringListMap != null && !stringListMap.isEmpty()) {
                     for (String methodName : stringListMap.keySet()) {
                         bindViewBuilder.addCode("\n//set click listener base on @OnClick annotation, method name:" + methodName + "\n");
@@ -203,10 +208,9 @@ class ViewBindProcess {
                 typeSpecBuilder.addMethod(bindViewBuilder.build());
             }
 
-
-            List<String> bindBundleCodeList = bindBundleCodeHolder.get(qualifiedName);
+            List<String> bindBundleCodeList = bindBundleCodeHolder.get(item.getQualifiedName());
             if (bindBundleCodeList != null && !bindBundleCodeList.isEmpty()) {
-                MethodSpec.Builder bindBundleBuilder = createBindBundleMethod(className);
+                MethodSpec.Builder bindBundleBuilder = createBindBundleMethod(item.getClassName());
                 for (String code : bindBundleCodeList) {
                     bindBundleBuilder.addCode(code);
                 }
@@ -214,32 +218,20 @@ class ViewBindProcess {
             }
 
             try {
-                JavaFile javaFile = JavaFile.builder(className.packageName(), typeSpecBuilder.build()).build();
+                JavaFile javaFile = JavaFile.builder(item.getClassName().packageName(), typeSpecBuilder.build()).build();
                 javaFile.writeTo(mProcess.getProcessingEnv().getFiler());
             } catch (Exception e) {
                 e.printStackTrace();
             }
-
-            generateInitClass(qualifiedNameList);
         }
     }
 
-    private TypeSpec.Builder generateClass(ClassName className, ClassName superClassName, String docStr) {
-        String simpleName = className.simpleName();
-        String extraName = "_QsAnn";
-        String realClassName = simpleName + extraName;
-        TypeSpec.Builder builder = TypeSpec.classBuilder(realClassName).addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+    private ClassName viewBindSuperClassName = ClassName.bestGuess("com.qsmaxmin.qsbase.common.viewbind.ViewAnnotationExecutor");
 
-        ClassName enclosingClassName = className.enclosingClassName();
-        ClassName typeName;
-        if (enclosingClassName != null) {
-            mProcess.printMessage("generateClass.......fit inner class:" + className + extraName);
-            typeName = ClassName.bestGuess(className.packageName() + "." + enclosingClassName.simpleName() + "." + simpleName);
-        } else {
-            mProcess.printMessage("generateClass.......class:" + className + extraName);
-            typeName = ClassName.bestGuess(className.packageName() + "." + simpleName);
-        }
-        builder.superclass(ParameterizedTypeName.get(superClassName, typeName));
+    private TypeSpec.Builder generateViewAnnotationClass(QualifiedItem item, String docStr) {
+        ClassName className = item.getClassName();
+        TypeSpec.Builder builder = TypeSpec.classBuilder(item.getExecuteClassName()).addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+        builder.superclass(ParameterizedTypeName.get(viewBindSuperClassName, className));
         builder.addJavadoc(docStr);
         return builder;
     }
@@ -267,39 +259,25 @@ class ViewBindProcess {
     }
 
 
-    private void generateInitClass(List<String> qualifiedNameList) {
-        TypeSpec.Builder classBuilder = TypeSpec.classBuilder("ViewBindInitImpl").addModifiers(Modifier.PUBLIC, Modifier.FINAL);
-        ClassName superClassName = ClassName.bestGuess("com.qsmaxmin.qsbase.common.viewbind.ViewBindInit");
-        classBuilder.addSuperinterface(superClassName);
+    private void generateExecutorFinderClass(List<QualifiedItem> itemList) {
+        ClassName targetClassName = ClassName.bestGuess("com.qsmaxmin.ann.viewbind.AnnotationExecutorFinder");
+        TypeSpec.Builder classBuilder = TypeSpec.classBuilder(targetClassName.simpleName()).addModifiers(Modifier.PUBLIC, Modifier.FINAL);
 
-        ClassName executorName = ClassName.bestGuess("com.qsmaxmin.qsbase.common.viewbind.AnnotationExecutor");
-        ClassName clazzName = ClassName.get(Class.class);
-        ClassName hashMapName = ClassName.get(HashMap.class);
-
-
-        MethodSpec.Builder methodBuilder = MethodSpec.methodBuilder("init").addModifiers(Modifier.PUBLIC, Modifier.FINAL);
-        ParameterizedTypeName typeName = ParameterizedTypeName.get(hashMapName, clazzName, executorName);
-        methodBuilder.addParameter(typeName, "map");
-        for (String qualifiedName : qualifiedNameList) {
-            methodBuilder.addCode("map.put(" + qualifiedName + ".class, new " + getExecuteClassName(qualifiedName) + "());\n");
+        MethodSpec.Builder methodBuilder = MethodSpec.methodBuilder("getViewAnnotationExecutor").addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+        methodBuilder.addParameter(String.class, "clazzName");
+        methodBuilder.returns(Object.class);
+        methodBuilder.addCode("switch (clazzName){\n");
+        for (QualifiedItem item : itemList) {
+            methodBuilder.addCode("\tcase $S:\n", item.getNameWith$String());
+            methodBuilder.addCode("\t\treturn new $T();\n", item.getExecuteClassName());
         }
+        methodBuilder.addCode("}\nreturn null;\n");
         classBuilder.addMethod(methodBuilder.build());
-
         try {
-            JavaFile javaFile = JavaFile.builder(superClassName.packageName(), classBuilder.build()).build();
+            JavaFile javaFile = JavaFile.builder(targetClassName.packageName(), classBuilder.build()).build();
             javaFile.writeTo(mProcess.getProcessingEnv().getFiler());
         } catch (Exception e) {
             e.printStackTrace();
-        }
-    }
-
-    private static String getExecuteClassName(String qualifiedName) {
-        ClassName className = ClassName.bestGuess(qualifiedName);
-        ClassName enclosingClassName = className.enclosingClassName();
-        if (enclosingClassName != null) {
-            return enclosingClassName.packageName() + "." + className.simpleName() + "_QsAnn";
-        } else {
-            return qualifiedName + "_QsAnn";
         }
     }
 }

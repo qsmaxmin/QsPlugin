@@ -19,7 +19,7 @@ uploadArchives {
     repositories.mavenDeployer {
         def deployPath = file(getProperty('aar.deployPath'))
         repository(url: "file://${deployPath.absolutePath}")
-        pom.groupId = "com.qsmaxmin.qsbase"
+        pom.groupId = "com.qsmaxmin.qsann"
         pom.artifactId = "QsPlugin"
         pom.version = "9.9.9"
     }

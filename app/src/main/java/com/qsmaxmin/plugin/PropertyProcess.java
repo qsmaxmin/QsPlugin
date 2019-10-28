@@ -26,8 +26,8 @@ import javax.lang.model.element.TypeElement;
  */
 class PropertyProcess {
     private final QsAnnotationProcess mProcess;
-    private       String              bindConfigMethodName = "bindConfig";
-    private       String              commitMethodName     = "commit";
+    private final String              bindConfigMethodName = "bindConfig";
+    private final String              commitMethodName     = "commit";
 
     PropertyProcess(QsAnnotationProcess process) {
         this.mProcess = process;
@@ -62,6 +62,7 @@ class PropertyProcess {
             }
             String elementName = element.getSimpleName().toString();
             String elementType = element.asType().toString();
+
             if (isCommonType(elementType)) {
                 String methodName;
                 if (isIntType(elementType)) {
@@ -185,6 +186,7 @@ class PropertyProcess {
         return "char".equals(type) || "java.lang.Character".equals(type);
     }
 
+
     private boolean isCommonType(String typeStr) {
         return "int".equals(typeStr)
                 || "boolean".equals(typeStr)
@@ -203,39 +205,6 @@ class PropertyProcess {
                 || "java.lang.Float".equals(typeStr)
                 || "java.lang.Double".equals(typeStr)
                 || "java.lang.Character".equals(typeStr);
-    }
-
-    private boolean isCommonSimpleType(String typeStr) {
-        return "int".equals(typeStr)
-                || "boolean".equals(typeStr)
-                || "long".equals(typeStr)
-                || "short".equals(typeStr)
-                || "byte".equals(typeStr)
-                || "float".equals(typeStr)
-                || "double".equals(typeStr)
-                || "char".equals(typeStr);
-    }
-
-    private String getSimpleType(String typeStr) {
-        switch (typeStr) {
-            case "java.lang.Integer":
-                return "int";
-            case "java.lang.Short":
-                return "short";
-            case "java.lang.Byte":
-                return "byte";
-            case "java.lang.Character":
-                return "char";
-            case "java.lang.Boolean":
-                return "boolean";
-            case "java.lang.Float":
-                return "float";
-            case "java.lang.Double":
-                return "double";
-            case "java.lang.Long":
-                return "long";
-        }
-        return typeStr;
     }
 
     private String getSPCommitMethodName(String typeStr) {
@@ -268,24 +237,6 @@ class PropertyProcess {
                 return "putLong";
         }
         return "putString";
-    }
-
-    private String getInstanceType(String typeStr) {
-        switch (typeStr) {
-            case "int":
-            case "short":
-            case "byte":
-            case "char":
-                return "java.lang.Integer";
-            case "boolean":
-                return "java.lang.Boolean";
-            case "float":
-            case "double":
-                return "java.lang.Float";
-            case "long":
-                return "java.lang.Long";
-        }
-        return typeStr;
     }
 
     private ClassName superClassName = ClassName.bestGuess("com.qsmaxmin.qsbase.common.config.PropertiesExecutor");

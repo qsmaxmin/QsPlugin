@@ -86,7 +86,12 @@ class PropertyProcess {
                 }
                 bindConfigCodeList.add(CodeBlock.of("config." + elementName + " = " + methodName + "(spAll.get(\"" + elementName + "\"));\n"));
             } else {
-                bindConfigCodeList.add(CodeBlock.of("config." + elementName + " = jsonStringToObject(spAll.get(\"" + elementName + "\"), $T.class);\n", ClassName.bestGuess(elementType)));
+                String type = elementType;
+                int index = elementType.indexOf('<');
+                if (index >= 0) {
+                    type = elementType.substring(0, index);
+                }
+                bindConfigCodeList.add(CodeBlock.of("config." + elementName + " = jsonStringToObject(spAll.get(\"" + elementName + "\"), $T.class);\n", ClassName.bestGuess(type)));
             }
 
             //commit method code
@@ -105,7 +110,12 @@ class PropertyProcess {
                     commitCodeList.add(CodeBlock.of("edit." + spCommitMethodName + "(\"" + elementName + "\", config." + elementName + ");\n"));
                 }
             } else {
-                commitCodeList.add(CodeBlock.of("edit.putString(\"" + elementName + "\", objectToJsonString(config." + elementName + ", $T.class));\n", ClassName.bestGuess(elementType)));
+                String type = elementType;
+                int index = elementType.indexOf('<');
+                if (index >= 0) {
+                    type = elementType.substring(0, index);
+                }
+                commitCodeList.add(CodeBlock.of("edit.putString(\"" + elementName + "\", objectToJsonString(config." + elementName + ", $T.class));\n", ClassName.bestGuess(type)));
             }
         }
 

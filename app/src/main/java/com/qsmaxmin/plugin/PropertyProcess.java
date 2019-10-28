@@ -98,11 +98,9 @@ class PropertyProcess {
             String spCommitMethodName = getSPCommitMethodName(elementType);
             if (isCommonType(elementType)) {
                 if ("double".equals(elementType)) {
-                    commitCodeList.add(CodeBlock.of("edit." + spCommitMethodName + "(\"" + elementName + "\", (float)config." + elementName + ");\n"));
-                    mProcess.printMessage("warning........class:" + qualifiedName + ", field:\"" + elementName + "\" is double type, converting to float type and saving will lose accuracy");
+                    commitCodeList.add(CodeBlock.of("edit." + spCommitMethodName + "(\"" + elementName + "\", String.valueOf(config." + elementName + "));\n"));
                 } else if ("java.lang.Double".equals(elementType)) {
-                    commitCodeList.add(CodeBlock.of("edit.putFloat(\"" + elementName + "\", doubleCastToFloat(config." + elementName + "));\n"));
-                    mProcess.printMessage("warning........class:" + qualifiedName + ", field:\"" + elementName + "\" is double type, converting to float type and saving will lose accuracy");
+                    commitCodeList.add(CodeBlock.of("edit." + spCommitMethodName + "(\"" + elementName + "\", doubleCastToString(config." + elementName + "));\n"));
                 } else {
                     commitCodeList.add(CodeBlock.of("edit." + spCommitMethodName + "(\"" + elementName + "\", config." + elementName + ");\n"));
                 }
@@ -227,10 +225,12 @@ class PropertyProcess {
                 return "putBoolean";
 
             case "float":
-            case "double":
             case "java.lang.Float":
-            case "java.lang.Double":
                 return "putFloat";
+
+            case "double":
+            case "java.lang.Double":
+                return "putString";
 
             case "long":
             case "java.lang.Long":

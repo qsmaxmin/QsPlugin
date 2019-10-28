@@ -2,10 +2,10 @@ package com.qsmaxmin.plugin;
 
 import com.qsmaxmin.qsbase.common.config.Property;
 import com.squareup.javapoet.ClassName;
+import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
-import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 
 import java.util.ArrayList;
@@ -28,157 +28,161 @@ class PropertyProcess {
     private final QsAnnotationProcess mProcess;
     private       String              bindConfigMethodName = "bindConfig";
     private       String              commitMethodName     = "commit";
-    private       String              clearMethodName      = "clear";
 
     PropertyProcess(QsAnnotationProcess process) {
         this.mProcess = process;
     }
 
-    void process(RoundEnvironment roundEnv) {
+    List<QualifiedItem> process(RoundEnvironment roundEnv) {
         Set<? extends Element> propertyElement = roundEnv.getElementsAnnotatedWith(Property.class);
-        if (propertyElement != null && !propertyElement.isEmpty()) {
+        if (propertyElement == null || propertyElement.isEmpty()) return null;
+        mProcess.printMessage("...@Property element size:" + propertyElement.size());
 
-            mProcess.printMessage("...@Property element size:" + propertyElement.size());
-            ClassName superClassName = ClassName.bestGuess("com.qsmaxmin.qsbase.common.config.PropertiesExecutor");
+        List<String> qualifiedNameList = new ArrayList<>();
+        List<QualifiedItem> qualifiedItemList = new ArrayList<>();
+        HashMap<String, HashMap<String, List<CodeBlock>>> propertyCodeHolder = new HashMap<>();
 
-            List<String> qualifiedNameList = new ArrayList<>();
-            HashMap<String, Boolean> stringBooleanHashMap = new HashMap<>();
-            HashMap<String, HashMap<String, List<String>>> propertyCodeHolder = new HashMap<>();
+        for (Element element : propertyElement) {
+            if (element.getKind() != ElementKind.FIELD) continue;
+            TypeElement enclosingElement = (TypeElement) element.getEnclosingElement();
+            String qualifiedName = enclosingElement.getQualifiedName().toString();
+            if (!qualifiedNameList.contains(qualifiedName)) qualifiedNameList.add(qualifiedName);
 
-            for (Element element : propertyElement) {
-                if (element.getKind() != ElementKind.FIELD) continue;
-                TypeElement enclosingElement = (TypeElement) element.getEnclosingElement();
-                String qualifiedName = enclosingElement.getQualifiedName().toString();
-                if (!qualifiedNameList.contains(qualifiedName)) qualifiedNameList.add(qualifiedName);
-
-                HashMap<String, List<String>> stringListHashMap = propertyCodeHolder.get(qualifiedName);
-                if (stringListHashMap == null) {
-                    stringListHashMap = new HashMap<>();
-                    propertyCodeHolder.put(qualifiedName, stringListHashMap);
-                }
-
-                //bindConfig method code
-                List<String> bindConfigCodeList = stringListHashMap.get(bindConfigMethodName);
-                if (bindConfigCodeList == null) {
-                    bindConfigCodeList = new ArrayList<>();
-                    stringListHashMap.put(bindConfigMethodName, bindConfigCodeList);
-                }
-                String elementName = element.getSimpleName().toString();
-                String elementType = element.asType().toString();
-                bindConfigCodeList.add("Object " + elementName + " = spAll.get(\"" + elementName + "\");\n");
-                if (isCommonType(elementType)) {
-                    String instanceType = getInstanceType(elementType);
-                    if ("short".equals(elementType) || "java.lang.Short".equals(elementType)
-                            || "byte".equals(elementType) || "java.lang.Byte".equals(elementType)
-                            || "char".equals(elementType) || "java.lang.Character".equals(elementType)) {
-                        String simpleType = getSimpleType(elementType);
-                        bindConfigCodeList.add("if(" + elementName + " instanceof java.lang.Integer){\n");
-                        bindConfigCodeList.add("    int " + elementName + "_int = (int) " + elementName + ";\n");
-                        bindConfigCodeList.add("    config." + elementName + " = (" + simpleType + ") " + elementName + "_int;\n}\n");
-
-                    } else if ("double".equals(elementType) || "java.lang.Double".equals(elementType)) {
-                        String simpleType = getSimpleType(elementType);
-                        bindConfigCodeList.add("if(" + elementName + " instanceof java.lang.Float){\n");
-                        bindConfigCodeList.add("    float " + elementName + "_float = (float) " + elementName + ";\n");
-                        bindConfigCodeList.add("    config." + elementName + " = (" + simpleType + ") " + elementName + "_float;\n}\n");
-
-                    } else {
-                        bindConfigCodeList.add("if (" + elementName + " instanceof " + instanceType + ") config." + elementName + " = (" + elementType + ") " + elementName + ";\n\n");
-                    }
-                } else {
-                    stringBooleanHashMap.put(qualifiedName, true);
-                    int index = elementType.indexOf('<');
-                    String elementTypeNoGenericParadigm = index > 0 ? elementType.substring(0, index) : elementType;
-                    bindConfigCodeList.add("if (" + elementName + " instanceof java.lang.String) {\n");
-                    bindConfigCodeList.add("    if (gson == null) gson = new com.google.gson.Gson();\n");
-                    bindConfigCodeList.add("    config." + elementName + " = gson.fromJson((java.lang.String) " + elementName + ", " + elementTypeNoGenericParadigm + ".class);\n}\n");
-                }
-
-                //commit method code
-                List<String> commitCodeList = stringListHashMap.get(commitMethodName);
-                if (commitCodeList == null) {
-                    commitCodeList = new ArrayList<>();
-                    stringListHashMap.put(commitMethodName, commitCodeList);
-                }
-                String spCommitMethodName = getSPCommitMethodName(elementType);
-                if (isCommonType(elementType)) {
-                    if ("double".equals(elementType)) {
-                        commitCodeList.add("edit." + spCommitMethodName + "(\"" + elementName + "\", (float)config." + elementName + ");\n");
-                        mProcess.printMessage("warning........class:" + qualifiedName + ", field:\"" + elementName + "\" is double type, converting to float type and saving will lose accuracy");
-                    } else if ("java.lang.Double".equals(elementType)) {
-                        commitCodeList.add("if(config." + elementName + " != null){\n");
-                        commitCodeList.add("    double " + elementName + "_ = config." + elementName + ";\n");
-                        commitCodeList.add("    edit." + spCommitMethodName + "(\"" + elementName + "\", (float)" + elementName + "_);\n");
-                        commitCodeList.add("} else {\n    edit.remove(\"" + elementName + "\");\n}\n");
-                        mProcess.printMessage("warning........class:" + qualifiedName + ", field:\"" + elementName + "\" is double type, converting to float type and saving will lose accuracy");
-                    } else {
-                        if (isCommonSimpleType(elementType)) {
-                            commitCodeList.add("edit." + spCommitMethodName + "(\"" + elementName + "\", config." + elementName + ");\n");
-                        } else {
-                            commitCodeList.add("if(config." + elementName + " != null){\n");
-                            commitCodeList.add("    edit." + spCommitMethodName + "(\"" + elementName + "\", config." + elementName + ");\n");
-                            commitCodeList.add("} else {\n    edit.remove(\"" + elementName + "\");\n}\n");
-                        }
-                    }
-                } else {
-                    stringBooleanHashMap.put(qualifiedName, true);
-                    commitCodeList.add("if (config." + elementName + " != null) {\n");
-                    commitCodeList.add("    if (gson == null) gson = new com.google.gson.Gson();\n");
-                    commitCodeList.add("    edit.putString(\"" + elementName + "\", gson.toJson(config." + elementName + "));\n ");
-                    commitCodeList.add("} else {\n    edit.remove(\"" + elementName + "\");\n}\n");
-                }
+            HashMap<String, List<CodeBlock>> stringListHashMap = propertyCodeHolder.get(qualifiedName);
+            if (stringListHashMap == null) {
+                stringListHashMap = new HashMap<>();
+                propertyCodeHolder.put(qualifiedName, stringListHashMap);
             }
 
-
-            //create class logic
-            for (String qualifiedName : qualifiedNameList) {
-                ClassName className = ClassName.bestGuess(qualifiedName);
-                HashMap<String, List<String>> stringListHashMap = propertyCodeHolder.get(qualifiedName);
-
-                TypeSpec.Builder typeSpecBuilder = generateClass(className, superClassName);
-                Boolean hasGson = stringBooleanHashMap.get(qualifiedName);
-                if (hasGson != null && hasGson) {
-                    typeSpecBuilder.addField(ClassName.bestGuess("com.google.gson.Gson"), "gson");
+            //bindConfig method code
+            List<CodeBlock> bindConfigCodeList = stringListHashMap.get(bindConfigMethodName);
+            if (bindConfigCodeList == null) {
+                bindConfigCodeList = new ArrayList<>();
+                stringListHashMap.put(bindConfigMethodName, bindConfigCodeList);
+            }
+            String elementName = element.getSimpleName().toString();
+            String elementType = element.asType().toString();
+            if (isCommonType(elementType)) {
+                String methodName;
+                if (isIntType(elementType)) {
+                    methodName = "forceCastInt";
+                } else if (isShortType(elementType)) {
+                    methodName = "forceCastToShort";
+                } else if (isByteType(elementType)) {
+                    methodName = "forceCastToByte";
+                } else if (isCharType(elementType)) {
+                    methodName = "forceCastToChar";
+                } else if (isFloatType(elementType)) {
+                    methodName = "forceCastToFloat";
+                } else if (isDoubleType(elementType)) {
+                    methodName = "forceCastToDouble";
+                } else if (isBooleanType(elementType)) {
+                    methodName = "forceCastToBoolean";
+                } else if (isLongType(elementType)) {
+                    methodName = "forceCastToLong";
+                } else {
+                    methodName = "forceCastObject";
                 }
-                //create bindConfig method
-                MethodSpec.Builder bindConfigMethod = createBindConfigMethod(className);
-                bindConfigMethod.addCode("java.util.Map<String, ?> spAll = sp.getAll();\n");
-                bindConfigMethod.addCode("if (spAll == null || spAll.isEmpty()) return;\n");
-                List<String> bindConfigCodeList = stringListHashMap.get(bindConfigMethodName);
-                if (bindConfigCodeList != null) {
-                    for (String code : bindConfigCodeList) {
-                        bindConfigMethod.addCode(code);
-                    }
-                }
-                typeSpecBuilder.addMethod(bindConfigMethod.build());
+                bindConfigCodeList.add(CodeBlock.of("config." + elementName + " = " + methodName + "(spAll.get(\"" + elementName + "\"));\n"));
+            } else {
+                bindConfigCodeList.add(CodeBlock.of("config." + elementName + " = jsonStringToObject(spAll.get(\"" + elementName + "\"), $T.class);\n", ClassName.bestGuess(elementType)));
+            }
 
-                //create commit method
-                MethodSpec.Builder commitMethod = createCommitMethod(className);
-                commitMethod.addCode("SharedPreferences.Editor edit = sp.edit();\n");
-                List<String> commitCodeList = stringListHashMap.get(commitMethodName);
-                if (commitCodeList != null) {
-                    for (String code : commitCodeList) {
-                        commitMethod.addCode(code);
-                    }
+            //commit method code
+            List<CodeBlock> commitCodeList = stringListHashMap.get(commitMethodName);
+            if (commitCodeList == null) {
+                commitCodeList = new ArrayList<>();
+                stringListHashMap.put(commitMethodName, commitCodeList);
+            }
+            String spCommitMethodName = getSPCommitMethodName(elementType);
+            if (isCommonType(elementType)) {
+                if ("double".equals(elementType)) {
+                    commitCodeList.add(CodeBlock.of("edit." + spCommitMethodName + "(\"" + elementName + "\", (float)config." + elementName + ");\n"));
+                    mProcess.printMessage("warning........class:" + qualifiedName + ", field:\"" + elementName + "\" is double type, converting to float type and saving will lose accuracy");
+                } else if ("java.lang.Double".equals(elementType)) {
+                    commitCodeList.add(CodeBlock.of("edit.putFloat(\"" + elementName + "\", doubleCastToFloat(config." + elementName + "));\n"));
+                    mProcess.printMessage("warning........class:" + qualifiedName + ", field:\"" + elementName + "\" is double type, converting to float type and saving will lose accuracy");
+                } else {
+                    commitCodeList.add(CodeBlock.of("edit." + spCommitMethodName + "(\"" + elementName + "\", config." + elementName + ");\n"));
                 }
-                commitMethod.addCode("edit.apply();\n");
-                typeSpecBuilder.addMethod(commitMethod.build());
-
-                //create clear method
-                MethodSpec.Builder clearMethod = createClearMethod(className);
-                clearMethod.addCode("SharedPreferences.Editor edit = sp.edit();\n");
-                clearMethod.addCode("edit.clear();\n");
-                clearMethod.addCode("edit.apply();\n");
-                typeSpecBuilder.addMethod(clearMethod.build());
-
-                try {
-                    JavaFile javaFile = JavaFile.builder(className.packageName(), typeSpecBuilder.build()).build();
-                    javaFile.writeTo(mProcess.getProcessingEnv().getFiler());
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+            } else {
+                commitCodeList.add(CodeBlock.of("edit.putString(\"" + elementName + "\", objectToJsonString(config." + elementName + ", $T.class));\n", ClassName.bestGuess(elementType)));
             }
         }
+
+        for (String qualifiedName : qualifiedNameList) {
+            qualifiedItemList.add(new QualifiedItem(qualifiedName));
+        }
+
+        //create class logic
+        for (QualifiedItem item : qualifiedItemList) {
+            HashMap<String, List<CodeBlock>> stringListHashMap = propertyCodeHolder.get(item.getQualifiedName());
+
+            TypeSpec.Builder typeSpecBuilder = generateClass(item);
+            //create bindConfig method
+            MethodSpec.Builder bindConfigMethod = createBindConfigMethod(item);
+            bindConfigMethod.addCode("java.util.Map<String, ?> spAll = sp.getAll();\n");
+            bindConfigMethod.addCode("if (spAll == null || spAll.isEmpty()) return;\n");
+            List<CodeBlock> bindConfigCodeList = stringListHashMap.get(bindConfigMethodName);
+            if (bindConfigCodeList != null) {
+                for (CodeBlock code : bindConfigCodeList) {
+                    bindConfigMethod.addCode(code);
+                }
+            }
+            typeSpecBuilder.addMethod(bindConfigMethod.build());
+
+            //create commit method
+            MethodSpec.Builder commitMethod = createCommitMethod(item);
+            commitMethod.addCode("SharedPreferences.Editor edit = sp.edit();\n");
+            List<CodeBlock> commitCodeList = stringListHashMap.get(commitMethodName);
+            if (commitCodeList != null) {
+                for (CodeBlock code : commitCodeList) {
+                    commitMethod.addCode(code);
+                }
+            }
+            commitMethod.addCode("edit.apply();\n");
+            typeSpecBuilder.addMethod(commitMethod.build());
+
+            try {
+                JavaFile javaFile = JavaFile.builder(item.getClassName().packageName(), typeSpecBuilder.build()).build();
+                javaFile.writeTo(mProcess.getProcessingEnv().getFiler());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return qualifiedItemList;
+    }
+
+    private boolean isIntType(String type) {
+        return "int".equals(type) || "java.lang.Integer".equals(type);
+    }
+
+    private boolean isBooleanType(String type) {
+        return "boolean".equals(type) || "java.lang.Boolean".equals(type);
+    }
+
+    private boolean isLongType(String type) {
+        return "long".equals(type) || "java.lang.Long".equals(type);
+    }
+
+    private boolean isShortType(String type) {
+        return "short".equals(type) || "java.lang.Short".equals(type);
+    }
+
+    private boolean isByteType(String type) {
+        return "byte".equals(type) || "java.lang.Byte".equals(type);
+    }
+
+    private boolean isFloatType(String type) {
+        return "float".equals(type) || "java.lang.Float".equals(type);
+    }
+
+    private boolean isDoubleType(String type) {
+        return "double".equals(type) || "java.lang.Double".equals(type);
+    }
+
+    private boolean isCharType(String type) {
+        return "char".equals(type) || "java.lang.Character".equals(type);
     }
 
     private boolean isCommonType(String typeStr) {
@@ -284,44 +288,31 @@ class PropertyProcess {
         return typeStr;
     }
 
-    private TypeSpec.Builder generateClass(ClassName className, ClassName superClassName) {
-        String simpleName = className.simpleName();
-        String extraName = "_QsAnn";
-        String realClassName = simpleName + extraName;
-        mProcess.printMessage("generateClass.......class:" + className + extraName);
+    private ClassName superClassName = ClassName.bestGuess("com.qsmaxmin.qsbase.common.config.PropertiesExecutor");
 
-        TypeSpec.Builder builder = TypeSpec.classBuilder(realClassName).addModifiers(Modifier.PUBLIC, Modifier.FINAL);
-        ClassName typeName = ClassName.bestGuess(className.packageName() + "." + simpleName);
-        builder.addSuperinterface(ParameterizedTypeName.get(superClassName, typeName));
+    private TypeSpec.Builder generateClass(QualifiedItem item) {
+        mProcess.printMessage("generateClass.......class:" + item.getQualifiedName());
+        TypeSpec.Builder builder = TypeSpec.classBuilder(item.getExecuteClassName()).addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+        builder.superclass(ParameterizedTypeName.get(superClassName, item.getClassName()));
         return builder;
     }
 
-    private MethodSpec.Builder createBindConfigMethod(TypeName target) {
+    private MethodSpec.Builder createBindConfigMethod(QualifiedItem item) {
         MethodSpec.Builder builder = MethodSpec.methodBuilder(bindConfigMethodName);
         builder.addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 .addAnnotation(Override.class)
                 .returns(void.class)
-                .addParameter(target, "config")
+                .addParameter(item.getClassName(), "config")
                 .addParameter(ClassName.bestGuess("android.content.SharedPreferences"), "sp");
         return builder;
     }
 
-    private MethodSpec.Builder createCommitMethod(TypeName target) {
+    private MethodSpec.Builder createCommitMethod(QualifiedItem item) {
         MethodSpec.Builder builder = MethodSpec.methodBuilder(commitMethodName);
         builder.addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 .addAnnotation(Override.class)
                 .returns(void.class)
-                .addParameter(target, "config")
-                .addParameter(ClassName.bestGuess("android.content.SharedPreferences"), "sp");
-        return builder;
-    }
-
-    private MethodSpec.Builder createClearMethod(TypeName target) {
-        MethodSpec.Builder builder = MethodSpec.methodBuilder(clearMethodName);
-        builder.addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                .addAnnotation(Override.class)
-                .returns(void.class)
-                .addParameter(target, "config")
+                .addParameter(item.getClassName(), "config")
                 .addParameter(ClassName.bestGuess("android.content.SharedPreferences"), "sp");
         return builder;
     }

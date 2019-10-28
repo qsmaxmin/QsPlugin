@@ -37,7 +37,7 @@ class ViewBindProcess {
         this.mProcess = process;
     }
 
-    void process(RoundEnvironment roundEnv) {
+    List<QualifiedItem> process(RoundEnvironment roundEnv) {
         List<String> qualifiedNameList = new ArrayList<>();
         List<QualifiedItem> qualifiedItemList = new ArrayList<>();
 
@@ -161,8 +161,6 @@ class ViewBindProcess {
         for (String qualifiedName : qualifiedNameList) {
             qualifiedItemList.add(new QualifiedItem(qualifiedName));
         }
-        //-----------------------create executor finder class-----------------------
-        generateExecutorFinderClass(qualifiedItemList);
 
         //--------------- create class file logic------------------
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -224,6 +222,8 @@ class ViewBindProcess {
                 e.printStackTrace();
             }
         }
+
+        return qualifiedItemList;
     }
 
     private ClassName viewBindSuperClassName = ClassName.bestGuess("com.qsmaxmin.qsbase.common.viewbind.ViewAnnotationExecutor");
@@ -258,26 +258,4 @@ class ViewBindProcess {
         return builder;
     }
 
-
-    private void generateExecutorFinderClass(List<QualifiedItem> itemList) {
-        ClassName targetClassName = ClassName.bestGuess("com.qsmaxmin.ann.viewbind.AnnotationExecutorFinder");
-        TypeSpec.Builder classBuilder = TypeSpec.classBuilder(targetClassName.simpleName()).addModifiers(Modifier.PUBLIC, Modifier.FINAL);
-
-        MethodSpec.Builder methodBuilder = MethodSpec.methodBuilder("getViewAnnotationExecutor").addModifiers(Modifier.PUBLIC, Modifier.FINAL);
-        methodBuilder.addParameter(String.class, "clazzName");
-        methodBuilder.returns(Object.class);
-        methodBuilder.addCode("switch (clazzName){\n");
-        for (QualifiedItem item : itemList) {
-            methodBuilder.addCode("\tcase $S:\n", item.getNameWith$String());
-            methodBuilder.addCode("\t\treturn new $T();\n", item.getExecuteClassName());
-        }
-        methodBuilder.addCode("}\nreturn null;\n");
-        classBuilder.addMethod(methodBuilder.build());
-        try {
-            JavaFile javaFile = JavaFile.builder(targetClassName.packageName(), classBuilder.build()).build();
-            javaFile.writeTo(mProcess.getProcessingEnv().getFiler());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
 }

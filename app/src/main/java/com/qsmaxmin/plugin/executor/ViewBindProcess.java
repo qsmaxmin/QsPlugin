@@ -1,6 +1,7 @@
 package com.qsmaxmin.plugin.executor;
 
 import com.qsmaxmin.plugin.QsAnnotationProcess;
+import com.qsmaxmin.plugin.model.JavaCodeConstants;
 import com.qsmaxmin.plugin.model.QualifiedItem;
 import com.qsmaxmin.qsbase.common.viewbind.annotation.Bind;
 import com.qsmaxmin.qsbase.common.viewbind.annotation.BindBundle;
@@ -33,12 +34,15 @@ import javax.lang.model.element.TypeElement;
  * @Description
  */
 public class ViewBindProcess extends BaseProcess {
+    private final ClassName superClassName;
 
-    public ViewBindProcess(QsAnnotationProcess process) {
+    public ViewBindProcess(QsAnnotationProcess process, String superClassPath) {
         super(process);
+        this.superClassName = ClassName.bestGuess(superClassPath);
+        generateFile(superClassPath, JavaCodeConstants.CODE_VIEW_BIND_SUPER_CLASS);
     }
 
-    public List<QualifiedItem> process(RoundEnvironment roundEnv) {
+    @Override public int process(RoundEnvironment roundEnv) {
         List<String> qualifiedNameList = new ArrayList<>();
         List<QualifiedItem> qualifiedItemList = new ArrayList<>();
 
@@ -228,15 +232,13 @@ public class ViewBindProcess extends BaseProcess {
             }
         }
 
-        return qualifiedItemList;
+        return qualifiedItemList.size();
     }
-
-    private ClassName viewBindSuperClassName = ClassName.bestGuess("com.qsmaxmin.qsbase.common.viewbind.ViewAnnotationExecutor");
 
     private TypeSpec.Builder generateViewAnnotationClass(QualifiedItem item, String docStr) {
         ClassName className = item.getClassName();
         TypeSpec.Builder builder = TypeSpec.classBuilder(item.getViewBindExecuteClassName()).addModifiers(Modifier.PUBLIC, Modifier.FINAL);
-        builder.superclass(ParameterizedTypeName.get(viewBindSuperClassName, className));
+        builder.superclass(ParameterizedTypeName.get(superClassName, className));
         builder.addJavadoc(docStr);
         return builder;
     }

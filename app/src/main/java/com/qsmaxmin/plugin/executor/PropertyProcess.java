@@ -1,6 +1,7 @@
 package com.qsmaxmin.plugin.executor;
 
 import com.qsmaxmin.plugin.QsAnnotationProcess;
+import com.qsmaxmin.plugin.model.JavaCodeConstants;
 import com.qsmaxmin.plugin.model.QualifiedItem;
 import com.qsmaxmin.qsbase.common.config.Property;
 import com.squareup.javapoet.ClassName;
@@ -27,18 +28,21 @@ import javax.lang.model.element.TypeElement;
  * @Description
  */
 public class PropertyProcess extends BaseProcess {
-    private final String bindConfigMethodName = "bindConfig";
-    private final String commitMethodName     = "commit";
+    private final ClassName superClassName;
+    private final String    bindConfigMethodName = "bindConfig";
+    private final String    commitMethodName     = "commit";
 
-    public PropertyProcess(QsAnnotationProcess process) {
+    public PropertyProcess(QsAnnotationProcess process, String superClassPath) {
         super(process);
+        this.superClassName = ClassName.bestGuess(superClassPath);
+        generateFile(superClassPath, JavaCodeConstants.CODE_CONFIG_SUPER_CLASS);
     }
 
-    public List<QualifiedItem> process(RoundEnvironment roundEnv) {
+    @Override public int process(RoundEnvironment roundEnv) {
         List<QualifiedItem> qualifiedItemList = new ArrayList<>();
 
         Set<? extends Element> propertyElement = roundEnv.getElementsAnnotatedWith(Property.class);
-        if (propertyElement == null || propertyElement.isEmpty()) return qualifiedItemList;
+        if (propertyElement == null || propertyElement.isEmpty()) return 0;
         printMessage("@Property element size:" + propertyElement.size());
 
         List<String> qualifiedNameList = new ArrayList<>();
@@ -159,7 +163,7 @@ public class PropertyProcess extends BaseProcess {
                 e.printStackTrace();
             }
         }
-        return qualifiedItemList;
+        return qualifiedItemList.size();
     }
 
     private boolean isIntType(String type) {
@@ -246,8 +250,6 @@ public class PropertyProcess extends BaseProcess {
         }
         return "putString";
     }
-
-    private ClassName superClassName = ClassName.bestGuess("com.qsmaxmin.qsbase.common.config.PropertiesExecutor");
 
     private TypeSpec.Builder generateClass(QualifiedItem item) {
         printMessage("generateClass.......class:" + item.getQualifiedName());

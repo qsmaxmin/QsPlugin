@@ -1,6 +1,7 @@
 package com.qsmaxmin.plugin.executor;
 
 import com.qsmaxmin.plugin.QsAnnotationProcess;
+import com.qsmaxmin.plugin.model.JavaCodeConstants;
 import com.qsmaxmin.plugin.model.QualifiedItem;
 import com.qsmaxmin.qsbase.common.event.Subscribe;
 import com.squareup.javapoet.ClassName;
@@ -31,15 +32,16 @@ import javax.lang.model.type.TypeMirror;
  */
 public class EventProcess extends BaseProcess {
 
-    public EventProcess(QsAnnotationProcess mProcess) {
+    public EventProcess(QsAnnotationProcess mProcess, String superClassPath) {
         super(mProcess);
+        generateFile(superClassPath, JavaCodeConstants.CODE_EVENT_SUPER_CLASS);
     }
 
-    public List<QualifiedItem> process(RoundEnvironment roundEnv) {
+    @Override public int process(RoundEnvironment roundEnv) {
         List<QualifiedItem> qualifiedItemList = new ArrayList<>();
 
         Set<? extends Element> propertyElement = roundEnv.getElementsAnnotatedWith(Subscribe.class);
-        if (propertyElement == null || propertyElement.isEmpty()) return qualifiedItemList;
+        if (propertyElement == null || propertyElement.isEmpty()) return 0;
         printMessage("@Subscribe element size:" + propertyElement.size());
 
         List<String> qualifiedNameList = new ArrayList<>();
@@ -89,8 +91,7 @@ public class EventProcess extends BaseProcess {
             }
 
         }
-
-        return qualifiedItemList;
+        return qualifiedItemList.size();
     }
 
 

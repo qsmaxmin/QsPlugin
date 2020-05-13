@@ -24,36 +24,15 @@ public class QualifiedItem {
         return qualifiedName;
     }
 
-    String getNameWith$String() {
-        ClassName enclose = className.enclosingClassName();
-        if (enclose != null) {
-            return className.packageName() + "." + enclose.simpleName() + "$" + className.simpleName();
-        } else {
-            return qualifiedName;
-        }
-    }
-
-    public static String getViewBindExtraName() {
-        return "_QsBind";
-    }
-
-    public static String getPropertyExtraName() {
-        return "_QsConfig";
-    }
-
-    public static String getEventExtraName() {
-        return "_QsEvent";
-    }
-
     public ClassName getViewBindExecuteClassName() {
-        return ClassName.get(className.packageName(), className.simpleName() + getViewBindExtraName());
+        return ClassName.get(className.packageName(), className.simpleName() + "_QsBind");
     }
 
     public ClassName getPropertyExecuteClassName() {
-        return ClassName.get(className.packageName(), className.simpleName() + getPropertyExtraName());
+        return ClassName.get(className.packageName(), className.simpleName() + "_QsConfig");
     }
 
     public ClassName getEventExecuteClassName() {
-        return ClassName.get(className.packageName(), className.simpleName() + getEventExtraName());
+        return ClassName.get(className.packageName(), className.simpleName() + "_QsEvent");
     }
 }

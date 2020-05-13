@@ -1,5 +1,7 @@
-package com.qsmaxmin.plugin;
+package com.qsmaxmin.plugin.executor;
 
+import com.qsmaxmin.plugin.QsAnnotationProcess;
+import com.qsmaxmin.plugin.model.QualifiedItem;
 import com.qsmaxmin.qsbase.common.viewbind.annotation.Bind;
 import com.qsmaxmin.qsbase.common.viewbind.annotation.BindBundle;
 import com.qsmaxmin.qsbase.common.viewbind.annotation.OnClick;
@@ -30,31 +32,34 @@ import javax.lang.model.element.TypeElement;
  * @Date 2019/7/22 17:22
  * @Description
  */
-class ViewBindProcess {
-    private final QsAnnotationProcess mProcess;
+public class ViewBindProcess extends BaseProcess {
 
-    ViewBindProcess(QsAnnotationProcess process) {
-        this.mProcess = process;
+    public ViewBindProcess(QsAnnotationProcess process) {
+        super(process);
     }
 
-    List<QualifiedItem> process(RoundEnvironment roundEnv) {
+    public List<QualifiedItem> process(RoundEnvironment roundEnv) {
         List<String> qualifiedNameList = new ArrayList<>();
         List<QualifiedItem> qualifiedItemList = new ArrayList<>();
 
         HashMap<String, List<String>> findIdCodeHolder = new HashMap<>();
         HashMap<String, List<String>> setFieldCodeHolder = new HashMap<>();
+        HashMap<String, List<String>> bindBundleCodeHolder = new HashMap<>();
+        HashMap<String, Map<String, List<String>>> setListenerCodeHolder = new HashMap<>();
 
         Set<? extends Element> bindViewElement = roundEnv.getElementsAnnotatedWith(Bind.class);
-        if (bindViewElement != null) mProcess.printMessage("...@Bind element size:" + bindViewElement.size());
-
-        HashMap<String, Map<String, List<String>>> setListenerCodeHolder = new HashMap<>();
         Set<? extends Element> onClickElement = roundEnv.getElementsAnnotatedWith(OnClick.class);
-        if (onClickElement != null) mProcess.printMessage("...@OnClick element size:" + onClickElement.size());
-
-        HashMap<String, List<String>> bindBundleCodeHolder = new HashMap<>();
         Set<? extends Element> bindBundleElement = roundEnv.getElementsAnnotatedWith(BindBundle.class);
-        if (bindBundleElement != null) mProcess.printMessage("...@BindBundle element size:" + bindBundleElement.size());
 
+        if (bindViewElement != null || onClickElement != null || bindBundleElement != null) {
+            int bindViewSize = 0;
+            if (bindViewElement != null) bindViewSize = bindViewElement.size();
+            int onClickSize = 0;
+            if (onClickElement != null) onClickSize = onClickElement.size();
+            int bindBunderSize = 0;
+            if (bindBundleElement != null) bindBunderSize = bindBundleElement.size();
+            printMessage("@Bind element size:" + bindViewSize + ",  @OnClick element size:" + onClickSize + ",  @BindBundle element size:" + bindBunderSize);
+        }
 
         //------------bind view logic-------------
         if (bindViewElement != null) {
@@ -217,7 +222,7 @@ class ViewBindProcess {
 
             try {
                 JavaFile javaFile = JavaFile.builder(item.getClassName().packageName(), typeSpecBuilder.build()).build();
-                javaFile.writeTo(mProcess.getProcessingEnv().getFiler());
+                javaFile.writeTo(getProcess().getProcessingEnv().getFiler());
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -230,7 +235,7 @@ class ViewBindProcess {
 
     private TypeSpec.Builder generateViewAnnotationClass(QualifiedItem item, String docStr) {
         ClassName className = item.getClassName();
-        TypeSpec.Builder builder = TypeSpec.classBuilder(item.getExecuteClassName()).addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+        TypeSpec.Builder builder = TypeSpec.classBuilder(item.getViewBindExecuteClassName()).addModifiers(Modifier.PUBLIC, Modifier.FINAL);
         builder.superclass(ParameterizedTypeName.get(viewBindSuperClassName, className));
         builder.addJavadoc(docStr);
         return builder;

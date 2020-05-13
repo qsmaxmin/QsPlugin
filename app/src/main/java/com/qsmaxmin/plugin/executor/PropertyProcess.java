@@ -1,5 +1,7 @@
-package com.qsmaxmin.plugin;
+package com.qsmaxmin.plugin.executor;
 
+import com.qsmaxmin.plugin.QsAnnotationProcess;
+import com.qsmaxmin.plugin.model.QualifiedItem;
 import com.qsmaxmin.qsbase.common.config.Property;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
@@ -24,22 +26,22 @@ import javax.lang.model.element.TypeElement;
  * @Date 2019/7/22 17:18
  * @Description
  */
-class PropertyProcess {
-    private final QsAnnotationProcess mProcess;
-    private final String              bindConfigMethodName = "bindConfig";
-    private final String              commitMethodName     = "commit";
+public class PropertyProcess extends BaseProcess {
+    private final String bindConfigMethodName = "bindConfig";
+    private final String commitMethodName     = "commit";
 
-    PropertyProcess(QsAnnotationProcess process) {
-        this.mProcess = process;
+    public PropertyProcess(QsAnnotationProcess process) {
+        super(process);
     }
 
-    List<QualifiedItem> process(RoundEnvironment roundEnv) {
+    public List<QualifiedItem> process(RoundEnvironment roundEnv) {
+        List<QualifiedItem> qualifiedItemList = new ArrayList<>();
+
         Set<? extends Element> propertyElement = roundEnv.getElementsAnnotatedWith(Property.class);
-        if (propertyElement == null || propertyElement.isEmpty()) return null;
-        mProcess.printMessage("...@Property element size:" + propertyElement.size());
+        if (propertyElement == null || propertyElement.isEmpty()) return qualifiedItemList;
+        printMessage("@Property element size:" + propertyElement.size());
 
         List<String> qualifiedNameList = new ArrayList<>();
-        List<QualifiedItem> qualifiedItemList = new ArrayList<>();
         HashMap<String, HashMap<String, List<CodeBlock>>> propertyCodeHolder = new HashMap<>();
 
         for (Element element : propertyElement) {
@@ -118,11 +120,9 @@ class PropertyProcess {
                 commitCodeList.add(CodeBlock.of("edit.putString(\"" + elementName + "\", objectToJsonString(config." + elementName + ", $T.class));\n", ClassName.bestGuess(type)));
             }
         }
-
         for (String qualifiedName : qualifiedNameList) {
             qualifiedItemList.add(new QualifiedItem(qualifiedName));
         }
-
         //create class logic
         for (QualifiedItem item : qualifiedItemList) {
             HashMap<String, List<CodeBlock>> stringListHashMap = propertyCodeHolder.get(item.getQualifiedName());
@@ -154,7 +154,7 @@ class PropertyProcess {
 
             try {
                 JavaFile javaFile = JavaFile.builder(item.getClassName().packageName(), typeSpecBuilder.build()).build();
-                javaFile.writeTo(mProcess.getProcessingEnv().getFiler());
+                javaFile.writeTo(getProcess().getProcessingEnv().getFiler());
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -218,6 +218,8 @@ class PropertyProcess {
     private String getSPCommitMethodName(String typeStr) {
         switch (typeStr) {
             case "java.lang.String":
+            case "double":
+            case "java.lang.Double":
                 return "putString";
 
             case "int":
@@ -238,10 +240,6 @@ class PropertyProcess {
             case "java.lang.Float":
                 return "putFloat";
 
-            case "double":
-            case "java.lang.Double":
-                return "putString";
-
             case "long":
             case "java.lang.Long":
                 return "putLong";
@@ -252,8 +250,8 @@ class PropertyProcess {
     private ClassName superClassName = ClassName.bestGuess("com.qsmaxmin.qsbase.common.config.PropertiesExecutor");
 
     private TypeSpec.Builder generateClass(QualifiedItem item) {
-        mProcess.printMessage("generateClass.......class:" + item.getQualifiedName());
-        TypeSpec.Builder builder = TypeSpec.classBuilder(item.getExecuteClassName()).addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+        printMessage("generateClass.......class:" + item.getQualifiedName());
+        TypeSpec.Builder builder = TypeSpec.classBuilder(item.getPropertyExecuteClassName()).addModifiers(Modifier.PUBLIC, Modifier.FINAL);
         builder.superclass(ParameterizedTypeName.get(superClassName, item.getClassName()));
         return builder;
     }

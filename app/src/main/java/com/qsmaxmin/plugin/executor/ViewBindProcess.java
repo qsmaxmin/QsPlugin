@@ -1,7 +1,6 @@
 package com.qsmaxmin.plugin.executor;
 
 import com.qsmaxmin.plugin.QsAnnotationProcess;
-import com.qsmaxmin.plugin.model.JavaCodeConstants;
 import com.qsmaxmin.plugin.model.QualifiedItem;
 import com.qsmaxmin.qsbase.common.viewbind.annotation.Bind;
 import com.qsmaxmin.qsbase.common.viewbind.annotation.BindBundle;
@@ -39,7 +38,6 @@ public class ViewBindProcess extends BaseProcess {
     public ViewBindProcess(QsAnnotationProcess process, String superClassPath) {
         super(process);
         this.superClassName = ClassName.bestGuess(superClassPath);
-        generateFile(superClassPath, JavaCodeConstants.CODE_VIEW_BIND_SUPER_CLASS);
     }
 
     @Override public int process(RoundEnvironment roundEnv) {

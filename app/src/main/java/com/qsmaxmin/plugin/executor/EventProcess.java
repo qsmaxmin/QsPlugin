@@ -1,7 +1,6 @@
 package com.qsmaxmin.plugin.executor;
 
 import com.qsmaxmin.plugin.QsAnnotationProcess;
-import com.qsmaxmin.plugin.model.JavaCodeConstants;
 import com.qsmaxmin.plugin.model.QualifiedItem;
 import com.qsmaxmin.qsbase.common.event.Subscribe;
 import com.squareup.javapoet.ClassName;
@@ -34,7 +33,6 @@ public class EventProcess extends BaseProcess {
 
     public EventProcess(QsAnnotationProcess mProcess, String superClassPath) {
         super(mProcess);
-        generateFile(superClassPath, JavaCodeConstants.CODE_EVENT_SUPER_CLASS);
     }
 
     @Override public int process(RoundEnvironment roundEnv) {
@@ -75,14 +73,10 @@ public class EventProcess extends BaseProcess {
 
 
             MethodSpec.Builder eventMethodBuilder = createGetEventMethod(elementList);
-            if (eventMethodBuilder != null) {
-                typeSpecBuilder.addMethod(eventMethodBuilder.build());
-            }
+            typeSpecBuilder.addMethod(eventMethodBuilder.build());
 
             MethodSpec.Builder executeMethod = createExecuteMethod(elementList);
-            if (executeMethod != null) {
-                typeSpecBuilder.addMethod(executeMethod.build());
-            }
+            typeSpecBuilder.addMethod(executeMethod.build());
             try {
                 JavaFile javaFile = JavaFile.builder(item.getClassName().packageName(), typeSpecBuilder.build()).build();
                 javaFile.writeTo(getProcess().getProcessingEnv().getFiler());

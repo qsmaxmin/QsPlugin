@@ -1,7 +1,6 @@
 package com.qsmaxmin.plugin.executor;
 
 import com.qsmaxmin.plugin.QsAnnotationProcess;
-import com.qsmaxmin.plugin.model.JavaCodeConstants;
 import com.qsmaxmin.plugin.model.QualifiedItem;
 import com.qsmaxmin.qsbase.common.config.Property;
 import com.squareup.javapoet.ClassName;
@@ -35,7 +34,6 @@ public class PropertyProcess extends BaseProcess {
     public PropertyProcess(QsAnnotationProcess process, String superClassPath) {
         super(process);
         this.superClassName = ClassName.bestGuess(superClassPath);
-        generateFile(superClassPath, JavaCodeConstants.CODE_CONFIG_SUPER_CLASS);
     }
 
     @Override public int process(RoundEnvironment roundEnv) {
@@ -252,7 +250,6 @@ public class PropertyProcess extends BaseProcess {
     }
 
     private TypeSpec.Builder generateClass(QualifiedItem item) {
-        printMessage("generateClass.......class:" + item.getQualifiedName());
         TypeSpec.Builder builder = TypeSpec.classBuilder(item.getPropertyExecuteClassName()).addModifiers(Modifier.PUBLIC, Modifier.FINAL);
         builder.superclass(ParameterizedTypeName.get(superClassName, item.getClassName()));
         return builder;

@@ -6,7 +6,7 @@ import com.qsmaxmin.plugin.executor.EventProcess;
 import com.qsmaxmin.plugin.executor.PropertyProcess;
 import com.qsmaxmin.plugin.executor.ViewBindProcess;
 import com.qsmaxmin.plugin.helper.CommonHelper;
-import com.qsmaxmin.plugin.model.JavaCodeConstants;
+import com.qsmaxmin.qsbase.common.ann.QsAnn;
 import com.qsmaxmin.qsbase.common.config.Property;
 import com.qsmaxmin.qsbase.common.event.Subscribe;
 import com.qsmaxmin.qsbase.common.viewbind.annotation.Bind;
@@ -17,11 +17,11 @@ import java.util.HashSet;
 import java.util.Set;
 
 import javax.annotation.processing.AbstractProcessor;
-import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.Processor;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.SourceVersion;
+import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic;
 
@@ -33,10 +33,9 @@ import javax.tools.Diagnostic;
 @AutoService(Processor.class)
 public class QsAnnotationProcess extends AbstractProcessor {
     private static final String TAG                    = "QsAnnotationProcess:";
-    private static final String PATH_EXECUTOR_FINDER   = "com.qsmaxmin.ann.AnnotationExecutorFinder";
-    private static final String PATH_VIEW_BIND_PARENT  = "com.qsmaxmin.ann.viewbind.ViewAnnotationExecutor";
-    private static final String PATH_PROPERTIES_PARENT = "com.qsmaxmin.ann.config.PropertiesExecutor";
-    private static final String PATH_EVENT_PARENT      = "com.qsmaxmin.ann.event.EventExecutor";
+    private static final String PATH_VIEW_BIND_PARENT  = "com.qsmaxmin.qsbase.common.viewbind.ViewAnnotationExecutor";
+    private static final String PATH_PROPERTIES_PARENT = "com.qsmaxmin.qsbase.common.config.PropertiesExecutor";
+    private static final String PATH_EVENT_PARENT      = "com.qsmaxmin.qsbase.common.event.EventExecutor";
 
     @Override public synchronized void init(ProcessingEnvironment processingEnvironment) {
         super.init(processingEnvironment);
@@ -46,6 +45,17 @@ public class QsAnnotationProcess extends AbstractProcessor {
         if (annotations.isEmpty()) return true;
         long startTime = System.currentTimeMillis();
         printMessage("started........................ annotations size:" + annotations.size());
+
+        Set<? extends Element> propertyElement = roundEnv.getElementsAnnotatedWith(QsAnn.class);
+        if (propertyElement != null && !propertyElement.isEmpty()) {
+            Element element = propertyElement.iterator().next();
+            QsAnn qsAnn = element.getAnnotation(QsAnn.class);
+            boolean library = qsAnn.isLibrary();
+            if (library) {
+                printMessage("\tis library, copy resource file......");
+                CommonHelper.copyResourceFiles(getProcessingEnv(), "com/qsmaxmin/qsbase");
+            }
+        }
 
         BaseProcess viewBindProcess = new ViewBindProcess(this, PATH_VIEW_BIND_PARENT);
         int viewBindFileSize = viewBindProcess.process(roundEnv);
@@ -59,13 +69,11 @@ public class QsAnnotationProcess extends AbstractProcessor {
         int eventFileSize = eventProcess.process(roundEnv);
         printMessage("\tEventProcess complete, process file size:" + eventFileSize);
 
-        Filer filer = getProcessingEnv().getFiler();
-        CommonHelper.generateFile(filer, QsAnnotationProcess.PATH_EXECUTOR_FINDER, JavaCodeConstants.CODE_EXECUTOR_FINDER);
-
         long endTime = System.currentTimeMillis();
         printMessage("end.........................annotation process complete, use time:" + (endTime - startTime) + "ms");
         return true;
     }
+
 
     @Override public SourceVersion getSupportedSourceVersion() {
         return SourceVersion.latestSupported();
@@ -73,6 +81,7 @@ public class QsAnnotationProcess extends AbstractProcessor {
 
     @Override public Set<String> getSupportedAnnotationTypes() {
         HashSet<String> hashSet = new HashSet<>();
+        hashSet.add(QsAnn.class.getCanonicalName());
         hashSet.add(Bind.class.getCanonicalName());
         hashSet.add(BindBundle.class.getCanonicalName());
         hashSet.add(OnClick.class.getCanonicalName());

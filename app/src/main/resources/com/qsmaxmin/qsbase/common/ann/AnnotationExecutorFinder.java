@@ -42,7 +42,6 @@ public final class AnnotationExecutorFinder {
             Class<?> myClass = Class.forName(className);
             return (T) myClass.newInstance();
         } catch (Exception e) {
-            e.printStackTrace();
             return null;
         }
     }

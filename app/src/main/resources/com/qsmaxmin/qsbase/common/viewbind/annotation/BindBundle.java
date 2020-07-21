@@ -8,7 +8,7 @@ import java.lang.annotation.Target;
 /**
  * @CreateBy qsmaxmin
  * @Date 2018/9/5 18:02
- * @Description
+ * @Description 解析Activity传参
  */
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.SOURCE)

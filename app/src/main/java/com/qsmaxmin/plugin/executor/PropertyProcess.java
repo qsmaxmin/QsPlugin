@@ -48,6 +48,9 @@ public class PropertyProcess extends BaseProcess {
 
         for (Element element : propertyElement) {
             if (element.getKind() != ElementKind.FIELD) continue;
+            Property property = element.getAnnotation(Property.class);
+            String key = property.value();
+
             TypeElement enclosingElement = (TypeElement) element.getEnclosingElement();
             String qualifiedName = enclosingElement.getQualifiedName().toString();
             if (!qualifiedNameList.contains(qualifiedName)) qualifiedNameList.add(qualifiedName);
@@ -66,7 +69,9 @@ public class PropertyProcess extends BaseProcess {
             }
             String elementName = element.getSimpleName().toString();
             String elementType = element.asType().toString();
-
+            if ("".equals(key)) {
+                key = elementName;
+            }
             if (isCommonType(elementType)) {
                 String methodName;
                 if (isIntType(elementType)) {
@@ -88,14 +93,14 @@ public class PropertyProcess extends BaseProcess {
                 } else {
                     methodName = "forceCastObject";
                 }
-                bindConfigCodeList.add(CodeBlock.of("config." + elementName + " = " + methodName + "(spAll.get(\"" + elementName + "\"));\n"));
+                bindConfigCodeList.add(CodeBlock.of("config." + elementName + " = " + methodName + "(spAll.get(\"" + key + "\"));\n"));
             } else {
                 String type = elementType;
                 int index = elementType.indexOf('<');
                 if (index >= 0) {
                     type = elementType.substring(0, index);
                 }
-                bindConfigCodeList.add(CodeBlock.of("config." + elementName + " = jsonStringToObject(spAll.get(\"" + elementName + "\"), $T.class);\n", ClassName.bestGuess(type)));
+                bindConfigCodeList.add(CodeBlock.of("config." + elementName + " = jsonStringToObject(spAll.get(\"" + key + "\"), $T.class);\n", ClassName.bestGuess(type)));
             }
 
             //commit method code
@@ -107,11 +112,11 @@ public class PropertyProcess extends BaseProcess {
             String spCommitMethodName = getSPCommitMethodName(elementType);
             if (isCommonType(elementType)) {
                 if ("double".equals(elementType)) {
-                    commitCodeList.add(CodeBlock.of("edit." + spCommitMethodName + "(\"" + elementName + "\", String.valueOf(config." + elementName + "));\n"));
+                    commitCodeList.add(CodeBlock.of("edit." + spCommitMethodName + "(\"" + key + "\", String.valueOf(config." + elementName + "));\n"));
                 } else if ("java.lang.Double".equals(elementType)) {
-                    commitCodeList.add(CodeBlock.of("edit." + spCommitMethodName + "(\"" + elementName + "\", doubleCastToString(config." + elementName + "));\n"));
+                    commitCodeList.add(CodeBlock.of("edit." + spCommitMethodName + "(\"" + key + "\", doubleCastToString(config." + elementName + "));\n"));
                 } else {
-                    commitCodeList.add(CodeBlock.of("edit." + spCommitMethodName + "(\"" + elementName + "\", config." + elementName + ");\n"));
+                    commitCodeList.add(CodeBlock.of("edit." + spCommitMethodName + "(\"" + key + "\", config." + elementName + ");\n"));
                 }
             } else {
                 String type = elementType;
@@ -119,7 +124,7 @@ public class PropertyProcess extends BaseProcess {
                 if (index >= 0) {
                     type = elementType.substring(0, index);
                 }
-                commitCodeList.add(CodeBlock.of("edit.putString(\"" + elementName + "\", objectToJsonString(config." + elementName + ", $T.class));\n", ClassName.bestGuess(type)));
+                commitCodeList.add(CodeBlock.of("edit.putString(\"" + key + "\", objectToJsonString(config." + elementName + ", $T.class));\n", ClassName.bestGuess(type)));
             }
         }
         for (String qualifiedName : qualifiedNameList) {

@@ -13,5 +13,5 @@ import java.lang.annotation.Target;
 public @interface OnClick {
     int[] value();
 
-    long clickInterval() default 300L;
+    long clickInterval() default 500L;
 }

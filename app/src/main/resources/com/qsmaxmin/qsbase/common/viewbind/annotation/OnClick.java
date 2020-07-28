@@ -22,8 +22,8 @@ public @interface OnClick {
     int[] value();
 
     /**
-     * 点击间隔时间，默认300ms
-     * 间隔小于300ms不生效，防止快速点击
+     * 点击间隔时间，默认500ms
+     * 间隔小于500ms不生效，防止快速点击
      */
-    long clickInterval() default 300L;
+    long clickInterval() default 500L;
 }

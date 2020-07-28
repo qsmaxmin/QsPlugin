@@ -3,11 +3,13 @@ package com.qsmaxmin.qsbase.common.viewbind;
 import android.os.Bundle;
 import android.view.View;
 
+import com.qsmaxmin.qsbase.common.model.QsNotProguard;
+
 /**
  * 该代码由QsPlugin动态生成，拒绝外部修改（当然改了也没用）
  */
 @SuppressWarnings({"WeakerAccess", "unchecked"})
-public class ViewAnnotationExecutor<T> {
+public class ViewAnnotationExecutor<T> implements QsNotProguard {
     public void bindView(T target, View view) {
     }
 

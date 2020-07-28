@@ -3,12 +3,13 @@ package com.qsmaxmin.qsbase.common.config;
 import android.content.SharedPreferences;
 
 import com.google.gson.Gson;
+import com.qsmaxmin.qsbase.common.model.QsNotProguard;
 
 /**
  * 该代码由QsPlugin动态生成，拒绝外部修改（当然改了也没用）
  */
 @SuppressWarnings({"unchecked", "WeakerAccess"})
-public abstract class PropertiesExecutor<T> {
+public abstract class PropertiesExecutor<T> implements QsNotProguard {
     private Gson gson;
 
     public abstract void bindConfig(T config, SharedPreferences sp);

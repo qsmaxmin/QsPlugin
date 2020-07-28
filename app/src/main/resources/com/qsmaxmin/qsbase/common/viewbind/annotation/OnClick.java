@@ -17,7 +17,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.SOURCE)
 public @interface OnClick {
     /**
-     * 控件的id集合, id小于1时不执行ui事件绑定.
+     * 控件的id集合, 找不到该控件则不绑定点击事件
      */
     int[] value();
 

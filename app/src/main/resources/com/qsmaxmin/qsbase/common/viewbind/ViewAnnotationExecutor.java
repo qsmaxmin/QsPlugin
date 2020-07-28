@@ -10,6 +10,8 @@ import com.qsmaxmin.qsbase.common.model.QsNotProguard;
  */
 @SuppressWarnings({"WeakerAccess", "unchecked"})
 public class ViewAnnotationExecutor<T> implements QsNotProguard {
+    private long lastClickTime;
+
     public void bindView(T target, View view) {
     }
 
@@ -22,5 +24,16 @@ public class ViewAnnotationExecutor<T> implements QsNotProguard {
 
     public final <D> D forceCastObject(Object o) {
         return (D) o;
+    }
+
+    public boolean isFastDoubleClick(long duration) {
+        if (duration <= 0) return false;
+        long time = System.currentTimeMillis();
+        if (time - lastClickTime < duration) {
+            return true;
+        } else {
+            lastClickTime = time;
+            return false;
+        }
     }
 }

@@ -12,4 +12,6 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.SOURCE)
 public @interface OnClick {
     int[] value();
+
+    long clickInterval() default 300L;
 }

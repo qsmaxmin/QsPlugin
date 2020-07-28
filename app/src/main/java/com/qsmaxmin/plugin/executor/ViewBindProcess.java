@@ -101,6 +101,8 @@ public class ViewBindProcess extends BaseProcess {
                 String methodName = executableElement.getSimpleName().toString();
 
                 OnClick onClick = element.getAnnotation(OnClick.class);
+                long clickInterval = onClick.clickInterval();
+
                 int[] onClickIds = onClick.value();
                 if (onClickIds.length == 0) continue;
                 ArrayList<Integer> tempList = new ArrayList<>();
@@ -124,6 +126,17 @@ public class ViewBindProcess extends BaseProcess {
                 if (setListenerCodeList == null) {
                     setListenerCodeList = new ArrayList<>();
                     stringListMap.put(methodName, setListenerCodeList);
+
+                    String doc = "\n//set click listener base on @OnClick annotation, method name:" + methodName + "\n";
+                    String listenerCode = "View.OnClickListener " + methodName + "Listener = new View.OnClickListener() {\n" +
+                            "   @Override public void onClick(View v) {\n" +
+                            "       if (isFastDoubleClick(" + clickInterval + ")) return;" +
+                            "       target." + methodName + "(v);\n" +
+                            "   }\n" +
+                            "};\n";
+
+                    setListenerCodeList.add(doc);
+                    setListenerCodeList.add(listenerCode);
                 }
 
                 for (int onClickId : tempList) {
@@ -197,13 +210,7 @@ public class ViewBindProcess extends BaseProcess {
                 Map<String, List<String>> stringListMap = setListenerCodeHolder.get(item.getQualifiedName());
                 if (stringListMap != null && !stringListMap.isEmpty()) {
                     for (String methodName : stringListMap.keySet()) {
-                        bindViewBuilder.addCode("\n//set click listener base on @OnClick annotation, method name:" + methodName + "\n");
-                        String listenerCode = "View.OnClickListener " + methodName + "Listener = new View.OnClickListener() {\n" +
-                                "   @Override public void onClick(View v) {\n" +
-                                "       target." + methodName + "(v);\n" +
-                                "   }\n" +
-                                "};\n";
-                        bindViewBuilder.addCode(listenerCode);
+
                         List<String> onClickCodeList = stringListMap.get(methodName);
                         for (String code : onClickCodeList) {
                             bindViewBuilder.addCode(code);

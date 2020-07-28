@@ -130,7 +130,7 @@ public class ViewBindProcess extends BaseProcess {
                     String doc = "\n//set click listener base on @OnClick annotation, method name:" + methodName + "\n";
                     String listenerCode = "View.OnClickListener " + methodName + "Listener = new View.OnClickListener() {\n" +
                             "   @Override public void onClick(View v) {\n" +
-                            "       if (isFastDoubleClick(" + clickInterval + ")) return;" +
+                            "       if (isFastDoubleClick(" + clickInterval + ")) return;\n" +
                             "       target." + methodName + "(v);\n" +
                             "   }\n" +
                             "};\n";

@@ -23,6 +23,6 @@ public abstract class BaseProcess {
     }
 
     void printMessage(String message) {
-        mProcess.printMessage("\t\t" + message);
+        mProcess.printMessage(1, message);
     }
 }

@@ -19,7 +19,6 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
-import javax.lang.model.element.TypeElement;
 
 /**
  * @CreateBy qsmaxmin
@@ -39,15 +38,10 @@ public class ViewBindProcess extends BaseProcess {
     private ViewBindData queryData(HashMap<String, ViewBindData> map, String qualifiedName) {
         ViewBindData data = map.get(qualifiedName);
         if (data == null) {
-            data = new ViewBindData(qualifiedName);
+            data = new ViewBindData(mProcess, qualifiedName);
             map.put(qualifiedName, data);
         }
         return data;
-    }
-
-    private String getQualifiedName(Element element) {
-        TypeElement enclosingElement = (TypeElement) element.getEnclosingElement();
-        return enclosingElement.getQualifiedName().toString();
     }
 
     @Override public int process(RoundEnvironment roundEnv) {

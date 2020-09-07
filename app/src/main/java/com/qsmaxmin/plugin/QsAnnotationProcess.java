@@ -4,6 +4,7 @@ import com.google.auto.service.AutoService;
 import com.qsmaxmin.annotation.bind.Bind;
 import com.qsmaxmin.annotation.bind.BindBundle;
 import com.qsmaxmin.annotation.bind.OnClick;
+import com.qsmaxmin.annotation.thread.ThreadPoint;
 import com.qsmaxmin.plugin.executor.BaseProcess;
 import com.qsmaxmin.plugin.executor.ViewBindProcess;
 
@@ -38,9 +39,9 @@ public class QsAnnotationProcess extends AbstractProcessor {
         long st = System.currentTimeMillis();
 
         BaseProcess viewBindProcess = new ViewBindProcess(this);
-        int viewBindFileSize = viewBindProcess.process(roundEnv);
+        int viewBindCount = viewBindProcess.process(roundEnv);
 
-        printMessage(0, "process complete.........process file count:" + viewBindFileSize + ", use time:" + (System.currentTimeMillis() - st) + "ms");
+        printMessage(0, "process complete.........process file count:" + viewBindCount + ", use time:" + (System.currentTimeMillis() - st) + "ms");
         return false;
     }
 
@@ -53,7 +54,7 @@ public class QsAnnotationProcess extends AbstractProcessor {
         hashSet.add(Bind.class.getCanonicalName());
         hashSet.add(BindBundle.class.getCanonicalName());
         hashSet.add(OnClick.class.getCanonicalName());
-
+        hashSet.add(ThreadPoint.class.getCanonicalName());
         return hashSet;
     }
 

@@ -3,6 +3,7 @@ package com.qsmaxmin.plugin.model;
 import com.qsmaxmin.annotation.bind.Bind;
 import com.qsmaxmin.annotation.bind.BindBundle;
 import com.qsmaxmin.annotation.bind.OnClick;
+import com.qsmaxmin.plugin.QsAnnotationProcess;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.MethodSpec;
 
@@ -19,22 +20,18 @@ import javax.lang.model.element.Name;
  * @Date 2020/8/19 11:56
  * @Description
  */
-public class ViewBindData {
+public class ViewBindData extends BaseData {
     private static final String CLASS_PLUGIN_HELPER = "com.qsmaxmin.qsbase.plugin.QsPluginHelper";
     private static final String METHOD_CAST_OBJECT  = "forceCastObject";
     private static final String METHOD_CAST_VIEW    = "forceCastToView";
 
-    private String                              qualifiedName;
-    private ClassName                           className;
     private HashMap<Element, Bind>              bindHashMap;
     private HashMap<ExecutableElement, OnClick> onClickHashMap;
     private HashMap<Element, BindBundle>        bindBundleHashMap;
     private ClassName                           helperClass;
 
-    public ViewBindData(String qualifiedName) {
-
-        this.qualifiedName = qualifiedName;
-        this.className = ClassName.bestGuess(qualifiedName);
+    public ViewBindData(QsAnnotationProcess process, String qualifiedName) {
+        super(process, qualifiedName);
         this.helperClass = ClassName.bestGuess(CLASS_PLUGIN_HELPER);
     }
 
@@ -126,16 +123,8 @@ public class ViewBindData {
         }
     }
 
-    public ClassName getClassName() {
-        return className;
-    }
-
-    public String getQualifiedName() {
-        return qualifiedName;
-    }
-
     public ClassName getViewBindExecuteClassName() {
-        return ClassName.get(className.packageName(), className.simpleName() + "_QsBind");
+        return ClassName.get(getClassName().packageName(), getClassName().simpleName() + "_QsBind");
     }
 
     public MethodSpec generateBindViewMethod() {
